@@ -52,7 +52,7 @@ help:
 	@echo "  Architecture: Cloudflare Pages + AWS App Runner / ECR + RDS Postgres"
 	@echo "  Region:       $(AWS_REGION) (Frankfurt, EU Data Residency per NFR-7)"
 	@echo "  Cost Model:   Option 2 (~0.72 USD/day, zero idle NAT Gateways / zero ALB)"
-	@echo "--------------------------------------------------------------------------------"
+	@--------------------------------------------------------------------------------
 	@echo "Local Development & Quality:"
 	@echo "  make install         Install backend and frontend dependencies"
 	@echo "  make lint            Run linters (Ruff on backend, ESLint on frontend)"
@@ -199,12 +199,16 @@ ifeq ($(BACKEND_DEPLOY_TARGET),apprunner)
 	fi; \
 	if command -v aws >/dev/null 2>&1 && [ -n "$$RESOLVED_ARN" ]; then \
 		echo "Updating App Runner service: $$RESOLVED_ARN with image: $(ECR_IMAGE)"; \
-		aws apprunner update-service \
-			--service-arn "$$RESOLVED_ARN" \
-			--source-configuration 'ImageRepository={ImageIdentifier="$(ECR_IMAGE)",ImageConfiguration={Port="8000"}}'; \
+		SRC_CFG=$$(aws apprunner describe-service --service-arn "$$RESOLVED_ARN" --region $(AWS_REGION) --query "Service.SourceConfiguration" --output json 2>/dev/null); \
+		if command -v jq >/dev/null 2>&1 && [ -n "$$SRC_CFG" ]; then \
+			UPDATED_CFG=$$(echo "$$SRC_CFG" | jq -c --arg img "$(ECR_IMAGE)" '.ImageRepository.ImageIdentifier = $$img'); \
+			aws apprunner update-service --service-arn "$$RESOLVED_ARN" --source-configuration "$$UPDATED_CFG" --region $(AWS_REGION) || aws apprunner start-deployment --service-arn "$$RESOLVED_ARN" --region $(AWS_REGION) || true; \
+		else \
+			aws apprunner start-deployment --service-arn "$$RESOLVED_ARN" --region $(AWS_REGION) || true; \
+		fi; \
 	else \
 		echo "[Dry-Run / Missing Credentials] Command to trigger App Runner deployment:"; \
-		echo "  aws apprunner update-service --service-arn <SERVICE_ARN> --source-configuration 'ImageRepository={ImageIdentifier=\"$(ECR_IMAGE)\",ImageConfiguration={Port=\"8000\"}}'"; \
+		echo "  aws apprunner update-service --service-arn <SERVICE_ARN> --source-configuration ..."; \
 	fi
 else
 	@echo "--> [2/2] [AWS ECS Fargate] Updating service '$(ECS_SERVICE)' on cluster '$(ECS_CLUSTER)' to tag '$(IMAGE_TAG)'..."

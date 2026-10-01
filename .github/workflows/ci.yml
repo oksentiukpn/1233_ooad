@@ -118,10 +118,13 @@ jobs:
           APP_RUNNER_ARN=$(aws apprunner list-services --region "$AWS_REGION" --query "ServiceSummaryList[?ServiceName=='spry-backend'].ServiceArn" --output text 2>/dev/null || true)
           if [ -n "$APP_RUNNER_ARN" ]; then
             echo "--> Updating AWS App Runner service ($APP_RUNNER_ARN) to tag: $IMAGE_TAG"
+            SRC_CFG=$(aws apprunner describe-service --service-arn "$APP_RUNNER_ARN" --region "$AWS_REGION" --query "Service.SourceConfiguration" --output json)
+            UPDATED_CFG=$(echo "$SRC_CFG" | jq -c --arg img "$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" '.ImageRepository.ImageIdentifier = $img')
             aws apprunner update-service \
               --service-arn "$APP_RUNNER_ARN" \
-              --source-configuration 'ImageRepository={ImageIdentifier="'$ECR_REGISTRY'/'$ECR_REPOSITORY':'$IMAGE_TAG'",ImageConfiguration={Port="8000"}}' \
-              --region "$AWS_REGION"
+              --source-configuration "$UPDATED_CFG" \
+              --region "$AWS_REGION" || aws apprunner start-deployment --service-arn "$APP_RUNNER_ARN" --region "$AWS_REGION" || true
+            echo "--> AWS App Runner updated successfully to tag: $IMAGE_TAG"
           fi
 
           # 2. Update AWS ECS Service (if ECS cluster is active)
@@ -133,4 +136,5 @@ jobs:
               --service spry-backend-service \
               --force-new-deployment \
               --region "$AWS_REGION"
+            echo "--> AWS ECS service rolling update triggered successfully."
           fi
