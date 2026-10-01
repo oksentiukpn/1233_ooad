@@ -14,7 +14,7 @@ INFRA_DIR="${PROJECT_ROOT}/infra"
 AWS_REGION="eu-central-1"
 
 echo "================================================================================"
-echo "          SPRY — AWS TURN-KEY DEPLOYMENT (OPTION 2: ~$0.72/DAY)                "
+echo "          SPRY — AWS TURN-KEY DEPLOYMENT (OPTION 2: ~0.72 USD/DAY)              "
 echo "================================================================================"
 
 # Step 1: Verify prerequisites
@@ -45,20 +45,12 @@ echo "    S3 Bucket:    ${S3_BUCKET}"
 # Step 3: Build & Push Backend Docker Image to ECR
 echo "--> [3/6] Building and pushing Docker container to ECR..."
 aws ecr get-login-password --region "${AWS_REGION}" | docker login --username AWS --password-stdin "${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
-docker build -t "${ECR_REPO_URL}:latest" -f "${PROJECT_ROOT}/backend/Dockerfile" "${PROJECT_ROOT}/backend"
+docker build -t "${ECR_REPO_URL}:latest" -t "spry-backend:latest" -f "${PROJECT_ROOT}/backend/Dockerfile" "${PROJECT_ROOT}/backend"
 docker push "${ECR_REPO_URL}:latest"
 
-# Step 4: Run Database Migrations on RDS
+# Step 4: Run Database Migrations on RDS via Docker Container (isolated environment)
 echo "--> [4/6] Running Alembic database migrations against RDS..."
-export DATABASE_URL="${DATABASE_URL}"
-(
-  cd "${PROJECT_ROOT}/backend"
-  if [ -f ".venv/bin/alembic" ]; then
-    .venv/bin/alembic upgrade head
-  else
-    alembic upgrade head
-  fi
-)
+docker run --rm -e DATABASE_URL="${DATABASE_URL}" "${ECR_REPO_URL}:latest" alembic upgrade head
 
 # Step 5: Provision/Update AWS App Runner Service
 echo "--> [5/6] Provisioning AWS App Runner Service..."
