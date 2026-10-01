@@ -38,11 +38,11 @@ variable "app_port" {
 variable "enable_app_runner" {
   description = "Whether to provision the App Runner service (requires image to be pushed to ECR first)"
   type        = bool
-  default     = false
+  default     = true
 }
 
 variable "enable_cloudfront" {
-  description = "Whether to provision CloudFront for frontend distribution"
+  description = "Whether to provision CloudFront for frontend distribution (set to false when using Cloudflare Pages)"
   type        = bool
-  default     = true
+  default     = false
 }
