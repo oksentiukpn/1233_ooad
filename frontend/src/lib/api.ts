@@ -1,7 +1,10 @@
 import { Meeting, MeetingCreate } from "@/types/meeting";
 
+// Use same-origin /api reverse-proxy when on 1233.pp.ua to eliminate CORS issues entirely
 const rawBase = import.meta.env.VITE_API_URL || "";
-const API_BASE = rawBase ? `${rawBase.replace(/\/$/, "")}/api` : "/api";
+const API_BASE = (rawBase && !rawBase.includes("1233.pp.ua"))
+  ? `${rawBase.replace(/\/$/, "")}/api`
+  : "/api";
 
 export async function fetchMeetings(): Promise<Meeting[]> {
   const response = await fetch(`${API_BASE}/meetings`, {
