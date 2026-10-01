@@ -1,0 +1,8 @@
+aws_region        = "eu-central-1"
+project_name      = "spry"
+db_username       = "spry_admin"
+db_password       = "SprySecure2026Password!" # Замініть на свій надійний пароль
+db_instance_class = "db.t4g.micro"            # Free Tier eligible / ~$0.016/год
+app_port          = 8000
+enable_app_runner = false                     # Поставте true ПІСЛЯ першого push образу в ECR
+enable_cloudfront = true                      # Вмикає роздачу фронтенду через CloudFront CDN

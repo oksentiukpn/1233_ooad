@@ -1,8 +1,8 @@
 # ==============================================================================
 # SPRY MONOREPO — DEPLOYMENT & DEVELOPMENT CONTRACT
 # ==============================================================================
-# Reference: arhitecture.md (Section 1 & 2: Cloudflare Pages + AWS App Runner / ECR in eu-central-1)
-# Cost Efficiency Principle: NFR-8 (<$0.15/active member/mo).
+# Reference: arhitecture.md (Section 1 & 2: Cloudflare/S3 + AWS App Runner / ECR in eu-central-1)
+# Cost Efficiency Principle: NFR-8 (<$0.15/active member/mo). Option 2: ~$0.72/day.
 # ==============================================================================
 
 SHELL := /bin/bash
@@ -12,7 +12,7 @@ SHELL := /bin/bash
 # Configuration Variables (Defaults mapped to architecture in arhitecture.md)
 # ------------------------------------------------------------------------------
 AWS_REGION             ?= eu-central-1
-AWS_ACCOUNT_ID         ?= 123456789012
+AWS_ACCOUNT_ID         ?= $(shell aws sts get-caller-identity --query Account --output text 2>/dev/null || echo "123456789012")
 ECR_REPOSITORY         ?= spry-backend
 IMAGE_TAG              ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo "latest")
 ECR_IMAGE              ?= $(AWS_ACCOUNT_ID).dkr.ecr.$(AWS_REGION).amazonaws.com/$(ECR_REPOSITORY):$(IMAGE_TAG)
@@ -22,7 +22,7 @@ ECR_IMAGE              ?= $(AWS_ACCOUNT_ID).dkr.ecr.$(AWS_REGION).amazonaws.com/
 # 2. 's3' (Generic AWS Fallback): S3 bucket sync + CloudFront invalidation.
 FRONTEND_DEPLOY_TARGET ?= cloudflare
 CLOUDFLARE_PROJECT     ?= spry-frontend
-S3_BUCKET              ?= spry-frontend-bucket
+S3_BUCKET              ?= spry-frontend-$(AWS_ACCOUNT_ID)
 CLOUDFRONT_DIST_ID     ?= EXXXXXXXXXXXXX
 
 # Backend Hosting Strategy:
@@ -36,9 +36,11 @@ ECS_SERVICE            ?= spry-backend-service
 PYTHON                 ?= python3
 VENV                   ?= backend/.venv
 RUFF                   ?= $(if $(wildcard $(VENV)/bin/ruff),$(VENV)/bin/ruff,ruff)
+INFRA_DIR              ?= infra
 
 .PHONY: help install lint format format-check test build build-frontend build-backend \
-        deploy-frontend deploy-backend deploy db-migrate dev down clean
+        deploy-frontend deploy-backend deploy db-migrate dev down clean \
+        infra-init infra-plan infra-apply-base infra-apply-apprunner infra-destroy deploy-aws
 
 # ------------------------------------------------------------------------------
 # Help & Documentation
@@ -47,9 +49,9 @@ help:
 	@echo "================================================================================"
 	@echo "                      SPRY MONOREPO — MAKEFILE CONTRACT                         "
 	@echo "================================================================================"
-	@echo "  Architecture: Cloudflare Pages (Frontend) + AWS App Runner / ECR (Backend)"
+	@echo "  Architecture: Cloudflare / S3+CloudFront + AWS App Runner / ECR + RDS Postgres"
 	@echo "  Region:       $(AWS_REGION) (Frankfurt, EU Data Residency per NFR-7)"
-	@echo "  Cost Model:   Minimal idle footprint (Zero NAT Gateway / Zero ALB)"
+	@echo "  Cost Model:   Option 2 (~0.72 USD/day, zero idle NAT Gateways / zero ALB)"
 	@echo "--------------------------------------------------------------------------------"
 	@echo "Local Development & Quality:"
 	@echo "  make install         Install backend and frontend dependencies"
@@ -67,6 +69,12 @@ help:
 	@echo "  make deploy-frontend Deploy bundle to Cloudflare Pages (or S3 + CloudFront)"
 	@echo "  make deploy-backend  Push to ECR & roll App Runner (or ECS) in $(AWS_REGION)"
 	@echo "  make deploy          Deploy full system (backend + frontend)"
+	@echo ""
+	@echo "AWS Infrastructure as Code (Option 2 — Terraform):"
+	@echo "  make infra-init      Initialize Terraform in infra/"
+	@echo "  make infra-plan      Preview AWS resources and changes"
+	@echo "  make infra-destroy   Destroy all AWS resources in 1 click (stops all billing)"
+	@echo "  make deploy-aws      Turn-key AWS deployment script (ECR + RDS + App Runner)"
 	@echo "  make clean           Clean up local build artifacts and caches"
 	@echo "================================================================================"
 
@@ -202,6 +210,33 @@ deploy: deploy-backend deploy-frontend
 	@echo "  Full Spry deployment successfully completed!"
 	@echo "  Frontend: $(FRONTEND_DEPLOY_TARGET) | Backend: $(BACKEND_DEPLOY_TARGET) ($(AWS_REGION))"
 	@echo "================================================================================"
+
+# ------------------------------------------------------------------------------
+# Terraform AWS Turn-Key Targets (Option 2 — ~0.72 USD/day)
+# ------------------------------------------------------------------------------
+infra-init:
+	@echo "--> Initializing Terraform in $(INFRA_DIR)..."
+	@terraform -chdir=$(INFRA_DIR) init
+
+infra-plan:
+	@echo "--> Running Terraform plan..."
+	@terraform -chdir=$(INFRA_DIR) plan
+
+infra-apply-base:
+	@echo "--> Provisioning Base AWS Infrastructure (ECR, RDS, S3, CloudFront)..."
+	@terraform -chdir=$(INFRA_DIR) apply -var="enable_app_runner=false"
+
+infra-apply-apprunner:
+	@echo "--> Provisioning/Updating AWS App Runner service..."
+	@terraform -chdir=$(INFRA_DIR) apply -var="enable_app_runner=true"
+
+infra-destroy:
+	@echo "--> Destroying ALL AWS resources to stop any billing..."
+	@terraform -chdir=$(INFRA_DIR) destroy
+
+deploy-aws:
+	@echo "--> Running turn-key deployment to AWS..."
+	@./scripts/deploy_aws.sh
 
 # ------------------------------------------------------------------------------
 # Cleanup
