@@ -10,6 +10,9 @@ class Settings(BaseSettings):
     CORS_ORIGINS: Union[List[str], str] = [
         "http://localhost:5173",
         "http://127.0.0.1:5173",
+        "https://1233.pp.ua",
+        "https://www.1233.pp.ua",
+        "https://api.1233.pp.ua",
     ]
 
     @field_validator("CORS_ORIGINS", mode="before")
