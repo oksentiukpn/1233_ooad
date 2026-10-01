@@ -1,4 +1,4 @@
-name: CI Pipeline
+name: CI/CD Pipeline
 
 on:
   push:
@@ -8,7 +8,7 @@ on:
 
 jobs:
   backend-lint-and-test:
-    name: Backend Lint & Typecheck
+    name: Backend Quality Gate (Lint, Format, Test)
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
@@ -18,6 +18,8 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements-dev.txt
 
       - name: Install dependencies
         working-directory: backend
@@ -33,8 +35,12 @@ jobs:
         working-directory: backend
         run: ruff format --check .
 
+      - name: Run unit & integration tests with Pytest
+        working-directory: backend
+        run: pytest tests/
+
   frontend-lint-and-typecheck:
-    name: Frontend Lint & Typecheck
+    name: Frontend Quality Gate (Lint, Format, Build)
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
@@ -62,3 +68,69 @@ jobs:
       - name: TypeScript typecheck & Build
         working-directory: frontend
         run: npm run build
+
+  deploy-backend:
+    name: Step 7 — Backend CD (ECR & AWS Service Roll)
+    needs: [backend-lint-and-test, frontend-lint-and-typecheck]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: eu-central-1
+
+      - name: Log in to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build, tag with commit SHA, and push image to ECR
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY: spry-backend
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          echo "Building container image tagged with commit SHA: $IMAGE_TAG"
+          docker build \
+            -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG \
+            -t $ECR_REGISTRY/$ECR_REPOSITORY:latest \
+            -f backend/Dockerfile backend
+
+          echo "Pushing image to ECR ($ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG)..."
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
+
+      - name: Roll AWS backend service (App Runner / ECS)
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY: spry-backend
+          IMAGE_TAG: ${{ github.sha }}
+          AWS_REGION: eu-central-1
+        run: |
+          # 1. Update AWS App Runner (Option 2 — architecture.md)
+          APP_RUNNER_ARN=$(aws apprunner list-services --region "$AWS_REGION" --query "ServiceSummaryList[?ServiceName=='spry-backend'].ServiceArn" --output text 2>/dev/null || true)
+          if [ -n "$APP_RUNNER_ARN" ]; then
+            echo "--> Updating AWS App Runner service ($APP_RUNNER_ARN) to tag: $IMAGE_TAG"
+            aws apprunner update-service \
+              --service-arn "$APP_RUNNER_ARN" \
+              --source-configuration 'ImageRepository={ImageIdentifier="'$ECR_REGISTRY'/'$ECR_REPOSITORY':'$IMAGE_TAG'",ImageConfiguration={Port="8000"}}' \
+              --region "$AWS_REGION"
+          fi
+
+          # 2. Update AWS ECS Service (if ECS cluster is active)
+          ECS_SERVICE_EXISTS=$(aws ecs describe-services --cluster spry-cluster --services spry-backend-service --region "$AWS_REGION" --query "services[?status=='ACTIVE'].serviceName" --output text 2>/dev/null || true)
+          if [ -n "$ECS_SERVICE_EXISTS" ]; then
+            echo "--> Rolling AWS ECS service 'spry-backend-service' on cluster 'spry-cluster' to tag: $IMAGE_TAG"
+            aws ecs update-service \
+              --cluster spry-cluster \
+              --service spry-backend-service \
+              --force-new-deployment \
+              --region "$AWS_REGION"
+          fi
