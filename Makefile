@@ -1,0 +1,214 @@
+# ==============================================================================
+# SPRY MONOREPO — DEPLOYMENT & DEVELOPMENT CONTRACT
+# ==============================================================================
+# Reference: arhitecture.md (Section 1 & 2: Cloudflare Pages + AWS App Runner / ECR in eu-central-1)
+# Cost Efficiency Principle: NFR-8 (<$0.15/active member/mo).
+# ==============================================================================
+
+SHELL := /bin/bash
+.DEFAULT_GOAL := help
+
+# ------------------------------------------------------------------------------
+# Configuration Variables (Defaults mapped to architecture in arhitecture.md)
+# ------------------------------------------------------------------------------
+AWS_REGION             ?= eu-central-1
+AWS_ACCOUNT_ID         ?= 123456789012
+ECR_REPOSITORY         ?= spry-backend
+IMAGE_TAG              ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo "latest")
+ECR_IMAGE              ?= $(AWS_ACCOUNT_ID).dkr.ecr.$(AWS_REGION).amazonaws.com/$(ECR_REPOSITORY):$(IMAGE_TAG)
+
+# Frontend Hosting Strategy:
+# 1. 'cloudflare' (Default in arhitecture.md): Cloudflare Pages — $0/mo free tier, 0 egress fees.
+# 2. 's3' (Generic AWS Fallback): S3 bucket sync + CloudFront invalidation.
+FRONTEND_DEPLOY_TARGET ?= cloudflare
+CLOUDFLARE_PROJECT     ?= spry-frontend
+S3_BUCKET              ?= spry-frontend-bucket
+CLOUDFRONT_DIST_ID     ?= EXXXXXXXXXXXXX
+
+# Backend Hosting Strategy:
+# 1. 'apprunner' (Default in arhitecture.md): AWS App Runner — eliminates $32/mo NAT Gateway & $20/mo ALB.
+# 2. 'ecs' (Generic AWS Fallback): ECS Fargate rolling deployment.
+BACKEND_DEPLOY_TARGET  ?= apprunner
+APP_RUNNER_SERVICE_ARN ?= arn:aws:apprunner:$(AWS_REGION):$(AWS_ACCOUNT_ID):service/spry-backend
+ECS_CLUSTER            ?= spry-cluster
+ECS_SERVICE            ?= spry-backend-service
+
+PYTHON                 ?= python3
+VENV                   ?= backend/.venv
+RUFF                   ?= $(if $(wildcard $(VENV)/bin/ruff),$(VENV)/bin/ruff,ruff)
+
+.PHONY: help install lint format format-check test build build-frontend build-backend \
+        deploy-frontend deploy-backend deploy db-migrate dev down clean
+
+# ------------------------------------------------------------------------------
+# Help & Documentation
+# ------------------------------------------------------------------------------
+help:
+	@echo "================================================================================"
+	@echo "                      SPRY MONOREPO — MAKEFILE CONTRACT                         "
+	@echo "================================================================================"
+	@echo "  Architecture: Cloudflare Pages (Frontend) + AWS App Runner / ECR (Backend)"
+	@echo "  Region:       $(AWS_REGION) (Frankfurt, EU Data Residency per NFR-7)"
+	@echo "  Cost Model:   Minimal idle footprint (Zero NAT Gateway / Zero ALB)"
+	@echo "--------------------------------------------------------------------------------"
+	@echo "Local Development & Quality:"
+	@echo "  make install         Install backend and frontend dependencies"
+	@echo "  make lint            Run linters (Ruff on backend, ESLint on frontend)"
+	@echo "  make format          Auto-format code (Ruff + Prettier)"
+	@echo "  make format-check    Verify formatting without modifying files"
+	@echo "  make test            Run typechecks and unit tests"
+	@echo "  make dev             Start full local stack via Docker Compose"
+	@echo "  make db-migrate      Apply Alembic migrations to database"
+	@echo ""
+	@echo "Build & Deployment Contract:"
+	@echo "  make build           Build both frontend bundle and backend Docker image"
+	@echo "  make build-frontend  Build static frontend bundle (Vite -> dist/)"
+	@echo "  make build-backend   Build backend container image tagged $(IMAGE_TAG)"
+	@echo "  make deploy-frontend Deploy bundle to Cloudflare Pages (or S3 + CloudFront)"
+	@echo "  make deploy-backend  Push to ECR & roll App Runner (or ECS) in $(AWS_REGION)"
+	@echo "  make deploy          Deploy full system (backend + frontend)"
+	@echo "  make clean           Clean up local build artifacts and caches"
+	@echo "================================================================================"
+
+# ------------------------------------------------------------------------------
+# Local Setup & Code Quality
+# ------------------------------------------------------------------------------
+install:
+	@echo "--> [1/2] Installing backend Python dependencies..."
+	@$(PYTHON) -m venv $(VENV)
+	@$(VENV)/bin/pip install --upgrade pip
+	@$(VENV)/bin/pip install -r backend/requirements-dev.txt
+	@echo "--> [2/2] Installing frontend Node dependencies..."
+	@cd frontend && npm install
+
+lint:
+	@echo "--> Running Ruff linter on backend..."
+	@$(RUFF) check backend/
+	@echo "--> Running ESLint on frontend..."
+	@cd frontend && npm run lint
+
+format:
+	@echo "--> Formatting backend with Ruff..."
+	@$(RUFF) format backend/
+	@echo "--> Formatting frontend with Prettier..."
+	@cd frontend && npm run format
+
+format-check:
+	@echo "--> Checking backend formatting with Ruff..."
+	@$(RUFF) format --check backend/
+	@echo "--> Checking frontend formatting with Prettier..."
+	@cd frontend && npm run format:check
+
+test: lint format-check
+	@echo "--> Checking frontend TypeScript compilation..."
+	@cd frontend && npm run build
+	@echo "--> Testing Python code syntax..."
+	@$(PYTHON) -m compileall backend/app
+
+dev:
+	@echo "--> Starting Spry local stack (PostgreSQL + Backend + Frontend)..."
+	@docker compose up --build
+
+down:
+	@echo "--> Stopping Spry local stack..."
+	@docker compose down
+
+db-migrate:
+	@echo "--> Running database migrations with Alembic..."
+	@cd backend && $(if $(wildcard ../$(VENV)/bin/alembic),../$(VENV)/bin/alembic,alembic) upgrade head
+
+# ------------------------------------------------------------------------------
+# Build Targets
+# ------------------------------------------------------------------------------
+build: build-frontend build-backend
+
+build-frontend:
+	@echo "--> Building frontend production bundle (Vite -> frontend/dist)..."
+	@cd frontend && npm run build
+
+build-backend:
+	@echo "--> Building backend Docker image: $(ECR_IMAGE)..."
+	@docker build -t $(ECR_IMAGE) -t $(ECR_REPOSITORY):latest -f backend/Dockerfile backend
+
+# ------------------------------------------------------------------------------
+# Deployment Contract (Self-Executable locally or in CI/CD)
+# ------------------------------------------------------------------------------
+
+## Deploy Frontend
+# Per arhitecture.md:
+# - Target 'cloudflare' (Default): Free tier on Cloudflare Pages ($0/mo, 0 egress fees, instant edge invalidation).
+# - Target 's3' (Fallback): Sync to AWS S3 & invalidate AWS CloudFront.
+deploy-frontend: build-frontend
+	@echo "--> Deploying frontend bundle (Target: $(FRONTEND_DEPLOY_TARGET))..."
+ifeq ($(FRONTEND_DEPLOY_TARGET),cloudflare)
+	@echo "--> [Cloudflare Pages] Deploying frontend/dist to project '$(CLOUDFLARE_PROJECT)'..."
+	@if command -v npx >/dev/null 2>&1 && [ -n "$$CLOUDFLARE_API_TOKEN" ]; then \
+		cd frontend && npx wrangler pages deploy dist --project-name=$(CLOUDFLARE_PROJECT); \
+	else \
+		echo "[Dry-Run / Missing Token] Command to run:"; \
+		echo "  cd frontend && npx wrangler pages deploy dist --project-name=$(CLOUDFLARE_PROJECT)"; \
+		echo "(Export CLOUDFLARE_API_TOKEN to trigger real deployment)"; \
+	fi
+else
+	@echo "--> [AWS S3 + CloudFront] Syncing bundle to s3://$(S3_BUCKET)..."
+	@if command -v aws >/dev/null 2>&1 && [ -n "$$AWS_ACCESS_KEY_ID" ]; then \
+		aws s3 sync frontend/dist s3://$(S3_BUCKET) --delete --cache-control "public, max-age=31536000, immutable"; \
+		aws cloudfront create-invalidation --distribution-id $(CLOUDFRONT_DIST_ID) --paths "/*"; \
+	else \
+		echo "[Dry-Run / Missing Credentials] Commands to run:"; \
+		echo "  aws s3 sync frontend/dist s3://$(S3_BUCKET) --delete"; \
+		echo "  aws cloudfront create-invalidation --distribution-id $(CLOUDFRONT_DIST_ID) --paths '/*'"; \
+	fi
+endif
+	@echo "--> Frontend deployment step complete."
+
+## Deploy Backend
+# Per arhitecture.md:
+# - Target 'apprunner' (Default): AWS App Runner in eu-central-1 (Frankfurt).
+#   Eliminates $32/mo NAT Gateways and $20/mo ALB. Total compute idle cost ~$0–$5/mo.
+# - Target 'ecs' (Fallback): ECS Fargate rolling deployment.
+deploy-backend: build-backend
+	@echo "--> Deploying backend container image to ECR ($(AWS_REGION))..."
+	@if command -v aws >/dev/null 2>&1 && [ -n "$$AWS_ACCESS_KEY_ID" ]; then \
+		aws ecr get-login-password --region $(AWS_REGION) | docker login --username AWS --password-stdin $(AWS_ACCOUNT_ID).dkr.ecr.$(AWS_REGION).amazonaws.com; \
+		docker push $(ECR_IMAGE); \
+	else \
+		echo "[Dry-Run / Missing Credentials] Commands to push to ECR:"; \
+		echo "  aws ecr get-login-password --region $(AWS_REGION) | docker login --username AWS --password-stdin $(AWS_ACCOUNT_ID).dkr.ecr.$(AWS_REGION).amazonaws.com"; \
+		echo "  docker push $(ECR_IMAGE)"; \
+	fi
+ifeq ($(BACKEND_DEPLOY_TARGET),apprunner)
+	@echo "--> [AWS App Runner] Updating service in $(AWS_REGION)..."
+	@if command -v aws >/dev/null 2>&1 && [ -n "$$AWS_ACCESS_KEY_ID" ]; then \
+		aws apprunner start-deployment --service-arn $(APP_RUNNER_SERVICE_ARN); \
+	else \
+		echo "[Dry-Run / Missing Credentials] Command to trigger App Runner deployment:"; \
+		echo "  aws apprunner start-deployment --service-arn $(APP_RUNNER_SERVICE_ARN)"; \
+	fi
+else
+	@echo "--> [AWS ECS Fargate] Rolling deployment on cluster '$(ECS_CLUSTER)', service '$(ECS_SERVICE)'..."
+	@if command -v aws >/dev/null 2>&1 && [ -n "$$AWS_ACCESS_KEY_ID" ]; then \
+		aws ecs update-service --cluster $(ECS_CLUSTER) --service $(ECS_SERVICE) --force-new-deployment; \
+	else \
+		echo "[Dry-Run / Missing Credentials] Command to trigger ECS rolling deployment:"; \
+		echo "  aws ecs update-service --cluster $(ECS_CLUSTER) --service $(ECS_SERVICE) --force-new-deployment"; \
+	fi
+endif
+	@echo "--> Backend deployment step complete."
+
+## Deploy Everything
+deploy: deploy-backend deploy-frontend
+	@echo "================================================================================"
+	@echo "  Full Spry deployment successfully completed!"
+	@echo "  Frontend: $(FRONTEND_DEPLOY_TARGET) | Backend: $(BACKEND_DEPLOY_TARGET) ($(AWS_REGION))"
+	@echo "================================================================================"
+
+# ------------------------------------------------------------------------------
+# Cleanup
+# ------------------------------------------------------------------------------
+clean:
+	@echo "--> Cleaning build artifacts and caches..."
+	@rm -rf frontend/dist frontend/node_modules/.vite
+	@find . -type d -name "__pycache__" -exec rm -rf {} +
+	@find . -type d -name ".ruff_cache" -exec rm -rf {} +
+	@echo "--> Clean complete."
