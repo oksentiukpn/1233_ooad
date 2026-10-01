@@ -3,68 +3,162 @@
 @tailwind utilities;
 
 @layer base {
-  :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    :root {
+        --rada-header-bg-1: #184dbd;
+        --rada-header-bg-2: #133f9f;
+        --rada-navy: #0e317e;
+        --rada-navy-dark: #09235c;
+        --rada-flag-blue: #2b8fff;
+        --rada-flag-yellow: #ffe358;
+        --rada-link: #004bc1;
+        --rada-link-hover: #0063ff;
+        --rada-valid: #009d3f;
+        --rada-valid-bg: #e8f5e9;
+        --rada-page-bg: #e3e9ec;
+        --rada-paper-bg: #ffffff;
+        --rada-border: #ced4da;
+        --rada-panel-bg: #c9e2ff;
+        --rada-panel-border: #a8ccfc;
 
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+        --background: 0 0% 100%;
+        --foreground: 222.2 84% 4.9%;
+        --border: 214.3 31.8% 91.4%;
+    }
 
-    --primary: 221.2 83.2% 53.3%;
-    --primary-foreground: 210 40% 98%;
-
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
-
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 221.2 83.2% 53.3%;
-
-    --radius: 0.5rem;
-  }
-
-  .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-
-    --primary: 217.2 91.2% 59.8%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 224.3 76.3% 48%;
-  }
+    .dark {
+        --rada-header-bg-1: #0f2c6e;
+        --rada-header-bg-2: #091d4a;
+        --rada-navy: #0a1838;
+        --rada-navy-dark: #061026;
+        --rada-page-bg: #121416;
+        --rada-paper-bg: #1a1d20;
+        --rada-border: #383e44;
+        --rada-panel-bg: #1c2b45;
+        --rada-panel-border: #2a3e63;
+        --rada-valid-bg: #13331b;
+    }
 }
 
-@layer base {
-  * {
-    @apply border-border;
-  }
-  body {
-    @apply bg-background text-foreground;
-  }
+body {
+    background-color: var(--rada-page-bg);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    color: #333333;
+    margin: 0;
+    padding: 0;
+    min-height: 100vh;
+}
+
+.dark body {
+    color: #e0e0e0;
+}
+
+/* Authentic Rada Typography */
+.font-rada-serif {
+    font-family: "Times New Roman", Times, "Liberation Serif", Georgia, serif;
+}
+
+.font-rada-sans {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+/* Page wrapper matching #page in Rada CSS */
+.rada-page-container {
+    max-width: 1220px;
+    margin: 0 auto;
+    box-shadow: 0px 0px 15px 15px rgba(0, 0, 0, 0.05);
+    background-color: var(--rada-paper-bg);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Header gradient */
+.rada-header {
+    background: linear-gradient(90deg, var(--rada-header-bg-1), var(--rada-header-bg-1) 50%, var(--rada-header-bg-2));
+    color: #ffffff;
+}
+
+/* Main Navbar */
+.rada-navbar {
+    background-color: var(--rada-navy);
+}
+
+/* Flag stripe */
+.rada-flag-stripe {
+    width: 4px;
+    height: 48px;
+    background: linear-gradient(180deg, var(--rada-flag-blue) 50%, var(--rada-flag-yellow) 50%);
+}
+
+/* Document Paper */
+.rada-doc-paper {
+    background-color: var(--rada-paper-bg);
+    border: 1px solid var(--rada-border);
+}
+
+/* Official Rada Ribbon Panel */
+.rada-ribbon-panel {
+    background-color: var(--rada-panel-bg);
+    border: 1px solid var(--rada-panel-border);
+}
+
+/* Links */
+a.rada-link {
+    color: var(--rada-link);
+    text-decoration: underline;
+}
+
+a.rada-link:hover {
+    color: var(--rada-link-hover);
+}
+
+/* Buttons */
+.btn-rada-primary {
+    background-color: #0e317e;
+    color: #ffffff;
+    border: 1px solid #09235c;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.btn-rada-primary:hover {
+    background-color: #184dbd;
+}
+
+.btn-rada-outline {
+    border: 1px solid #6c757d;
+    color: #495057;
+    background-color: transparent;
+}
+
+.btn-rada-outline:hover {
+    background-color: #e9ecef;
+}
+
+/* Document Article Styling */
+.rada-article {
+    font-family: "Times New Roman", Times, "Liberation Serif", Georgia, serif;
+    font-size: 1.05rem;
+    line-height: 1.6;
+}
+
+.rada-article-title {
+    font-weight: bold;
+    font-size: 1.15rem;
+    color: #000000;
+}
+
+.dark .rada-article-title {
+    color: #ffffff;
+}
+
+.rada-article-note {
+    font-style: italic;
+    color: #666666;
+    font-size: 0.95rem;
+}
+
+.dark .rada-article-note {
+    color: #a0a0a0;
 }
