@@ -70,21 +70,22 @@ jobs:
         run: npm run build
 
   deploy-backend:
-    name: Step 7 — Backend CD (ECR & AWS Service Roll)
+    name: Step 8 — Backend CD via AWS OIDC (No Static Keys)
     needs: [backend-lint-and-test, frontend-lint-and-typecheck]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      id-token: write # Step 8: Required for requesting the GitHub OIDC JWT token
+      contents: read # Required for actions/checkout
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
 
-      - name: Configure AWS credentials
+      # Step 8: Assume IAM Role using ephemeral GitHub OIDC WebIdentity token
+      - name: Configure AWS credentials via OIDC
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME || 'arn:aws:iam::791614297907:role/spry-github-actions-role' }}
           aws-region: eu-central-1
 
       - name: Log in to Amazon ECR
