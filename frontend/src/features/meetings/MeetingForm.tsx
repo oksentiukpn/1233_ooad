@@ -54,7 +54,9 @@ export function MeetingForm({ onMeetingCreated }: MeetingFormProps) {
       });
 
       onMeetingCreated(created);
-      setSuccessMessage(`Засідання №${created.id} «${created.title}» успішно внесено до офіційного реєстру.`);
+      setSuccessMessage(
+        `Засідання №${created.id} «${created.title}» успішно внесено до офіційного реєстру.`
+      );
 
       // Reset form
       setTitle("");
@@ -79,7 +81,8 @@ export function MeetingForm({ onMeetingCreated }: MeetingFormProps) {
           РОЗДІЛ I. РЕЄСТРАЦІЙНА КАРТКА ЗАСІДАННЯ
         </h2>
         <p className="font-rada-serif text-xs italic text-neutral-600 dark:text-neutral-400 mt-0.5">
-          Стаття 1. Порядок внесення нового пленарного засідання або наради до Єдиного державного реєстру
+          Стаття 1. Порядок внесення нового пленарного засідання або наради до Єдиного
+          державного реєстру
         </p>
       </div>
 
@@ -103,7 +106,10 @@ export function MeetingForm({ onMeetingCreated }: MeetingFormProps) {
         )}
 
         <div>
-          <label htmlFor="rada-title" className="block text-xs sm:text-sm font-bold text-neutral-800 dark:text-neutral-200 mb-1">
+          <label
+            htmlFor="rada-title"
+            className="block text-xs sm:text-sm font-bold text-neutral-800 dark:text-neutral-200 mb-1"
+          >
             1. Назва засідання або порядок денний (title):
           </label>
           <input
@@ -120,7 +126,10 @@ export function MeetingForm({ onMeetingCreated }: MeetingFormProps) {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label htmlFor="rada-starts-at" className="block text-xs sm:text-sm font-bold text-neutral-800 dark:text-neutral-200 mb-1">
+            <label
+              htmlFor="rada-starts-at"
+              className="block text-xs sm:text-sm font-bold text-neutral-800 dark:text-neutral-200 mb-1"
+            >
               2. Час відкриття засідання (starts_at):
             </label>
             <input
@@ -135,7 +144,10 @@ export function MeetingForm({ onMeetingCreated }: MeetingFormProps) {
           </div>
 
           <div>
-            <label htmlFor="rada-ends-at" className="block text-xs sm:text-sm font-bold text-neutral-800 dark:text-neutral-200 mb-1">
+            <label
+              htmlFor="rada-ends-at"
+              className="block text-xs sm:text-sm font-bold text-neutral-800 dark:text-neutral-200 mb-1"
+            >
               3. Час закриття засідання (ends_at):
             </label>
             <input
@@ -151,7 +163,10 @@ export function MeetingForm({ onMeetingCreated }: MeetingFormProps) {
         </div>
 
         <div>
-          <label htmlFor="rada-attendee-count" className="block text-xs sm:text-sm font-bold text-neutral-800 dark:text-neutral-200 mb-1">
+          <label
+            htmlFor="rada-attendee-count"
+            className="block text-xs sm:text-sm font-bold text-neutral-800 dark:text-neutral-200 mb-1"
+          >
             4. Кількість народних депутатів / учасників (attendee_count):
           </label>
           <input
@@ -165,7 +180,8 @@ export function MeetingForm({ onMeetingCreated }: MeetingFormProps) {
             className="w-full sm:w-1/2 text-xs sm:text-sm p-2.5 bg-white dark:bg-slate-900 border border-neutral-300 dark:border-neutral-600 rounded focus:border-[#184dbd] focus:outline-none font-sans"
           />
           <span className="block text-[11px] text-neutral-500 dark:text-neutral-400 mt-1 italic">
-            Конституційний склад Верховної Ради України становить 450 народних депутатів України.
+            Конституційний склад Верховної Ради України становить 450 народних депутатів
+            України.
           </span>
         </div>
 

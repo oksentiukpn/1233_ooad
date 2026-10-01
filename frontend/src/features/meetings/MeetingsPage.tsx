@@ -11,7 +11,11 @@ interface MeetingsPageProps {
   setActiveTab: (tab: "registry" | "create" | "card" | "history") => void;
 }
 
-export function MeetingsPage({ searchQuery = "", activeTab, setActiveTab }: MeetingsPageProps) {
+export function MeetingsPage({
+  searchQuery = "",
+  activeTab,
+  setActiveTab,
+}: MeetingsPageProps) {
   const [meetings, setMeetings] = useState<Meeting[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -84,9 +88,9 @@ export function MeetingsPage({ searchQuery = "", activeTab, setActiveTab }: Meet
         </p>
 
         <div className="mt-3 text-left font-rada-serif italic text-xs text-neutral-600 dark:text-neutral-400 bg-neutral-50 dark:bg-slate-800/60 p-3 border-l-2 border-[#184dbd] rounded-r">
-          &#123;Із змінами та доповненнями, внесеними згідно з Регламентом Верховної Ради України,
-          стандартами об'єктно-орієнтованого аналізу та проєктування (OOAD Module 1) та
-          архітектурними вимогами єдиного монорепозиторію Spry&#125;
+          &#123;Із змінами та доповненнями, внесеними згідно з Регламентом Верховної Ради
+          України, стандартами об'єктно-орієнтованого аналізу та проєктування (OOAD Module
+          1) та архітектурними вимогами єдиного монорепозиторію Spry&#125;
         </div>
       </div>
 
@@ -95,7 +99,9 @@ export function MeetingsPage({ searchQuery = "", activeTab, setActiveTab }: Meet
         <div className="my-4 p-4 rounded border border-red-300 bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300 text-xs sm:text-sm flex items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <AlertTriangle className="h-5 w-5 shrink-0 text-red-600 dark:text-red-400" />
-            <span><strong>Помилка зв'язку з базою даних:</strong> {error}</span>
+            <span>
+              <strong>Помилка зв'язку з базою даних:</strong> {error}
+            </span>
           </div>
           <button
             type="button"
@@ -116,11 +122,24 @@ export function MeetingsPage({ searchQuery = "", activeTab, setActiveTab }: Meet
             Картка реєстру засідань Верховної Ради України
           </h3>
           <div className="text-xs sm:text-sm font-rada-serif space-y-2 text-slate-700 dark:text-slate-300 leading-relaxed">
-            <p><strong>Вид акта:</strong> Електронний реєстр та регламентний протокол засідань</p>
-            <p><strong>Суб'єкт внесення:</strong> Секретаріат Верховної Ради України / Система Spry</p>
-            <p><strong>Статус:</strong> Офіційний, діючий, відкритий доступ</p>
-            <p><strong>Технічна основа:</strong> FastAPI (Python 3.12) &bull; PostgreSQL 16 &bull; React (Vite, TypeScript, Tailwind CSS)</p>
-            <p><strong>Усього записів у базі даних:</strong> {meetings.length} засідань</p>
+            <p>
+              <strong>Вид акта:</strong> Електронний реєстр та регламентний протокол
+              засідань
+            </p>
+            <p>
+              <strong>Суб'єкт внесення:</strong> Секретаріат Верховної Ради України /
+              Система Spry
+            </p>
+            <p>
+              <strong>Статус:</strong> Офіційний, діючий, відкритий доступ
+            </p>
+            <p>
+              <strong>Технічна основа:</strong> FastAPI (Python 3.12) &bull; PostgreSQL 16
+              &bull; React (Vite, TypeScript, Tailwind CSS)
+            </p>
+            <p>
+              <strong>Усього записів у базі даних:</strong> {meetings.length} засідань
+            </p>
           </div>
           <div className="mt-4">
             <button
@@ -141,9 +160,17 @@ export function MeetingsPage({ searchQuery = "", activeTab, setActiveTab }: Meet
             Історія змін та редакцій реєстру
           </h3>
           <ul className="text-xs sm:text-sm font-rada-serif space-y-2 text-slate-700 dark:text-slate-300 list-disc list-inside">
-            <li><strong>01.10.2026</strong> — Запровадження першого вертикального зрізу Spry Monorepo (GET/POST /api/meetings).</li>
-            <li><strong>01.01.2020</strong> — Внесення попередніх регламентних поправок.</li>
-            <li><strong>28.06.1996</strong> — Прийняття Конституції України Верховною Радою України.</li>
+            <li>
+              <strong>01.10.2026</strong> — Запровадження першого вертикального зрізу Spry
+              Monorepo (GET/POST /api/meetings).
+            </li>
+            <li>
+              <strong>01.01.2020</strong> — Внесення попередніх регламентних поправок.
+            </li>
+            <li>
+              <strong>28.06.1996</strong> — Прийняття Конституції України Верховною Радою
+              України.
+            </li>
           </ul>
           <div className="mt-4">
             <button
@@ -186,7 +213,8 @@ export function MeetingsPage({ searchQuery = "", activeTab, setActiveTab }: Meet
 
         {searchQuery.trim() && (
           <div className="mb-4 text-xs font-medium text-neutral-600 dark:text-neutral-400 bg-blue-50 dark:bg-blue-950/40 p-2.5 rounded border border-blue-200 dark:border-blue-800">
-            Результати пошуку за запитом: <b>«{searchQuery}»</b> (знайдено: {filteredMeetings.length})
+            Результати пошуку за запитом: <b>«{searchQuery}»</b> (знайдено:{" "}
+            {filteredMeetings.length})
           </div>
         )}
 

@@ -1,6 +1,7 @@
+from fastapi import APIRouter
+
 from app.api.health import router as health_router
 from app.api.meetings import router as meetings_router
-from fastapi import APIRouter
 
 api_router = APIRouter(prefix="/api")
 api_router.include_router(health_router, tags=["health"])

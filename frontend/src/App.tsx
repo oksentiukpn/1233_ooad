@@ -17,7 +17,9 @@ import {
 export function App() {
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [activeTab, setActiveTab] = useState<"registry" | "create" | "card" | "history">("registry");
+  const [activeTab, setActiveTab] = useState<"registry" | "create" | "card" | "history">(
+    "registry"
+  );
   const [currentLang, setCurrentLang] = useState<"uk" | "en">("uk");
 
   useEffect(() => {
@@ -69,7 +71,8 @@ export function App() {
                   </span>
                 </div>
                 <div className="text-xs md:text-sm font-medium text-[#ffe358] tracking-wide mt-0.5">
-                  Законодавство України &bull; Єдина інформаційна система реєстрації засідань «Spry»
+                  Законодавство України &bull; Єдина інформаційна система реєстрації
+                  засідань «Spry»
                 </div>
               </div>
             </a>
@@ -92,20 +95,22 @@ export function App() {
               <button
                 type="button"
                 onClick={() => setCurrentLang("uk")}
-                className={`px-2.5 py-1 font-semibold transition-colors ${currentLang === "uk"
+                className={`px-2.5 py-1 font-semibold transition-colors ${
+                  currentLang === "uk"
                     ? "bg-[#ffe358] text-slate-900"
                     : "bg-transparent text-white hover:bg-white/10"
-                  }`}
+                }`}
               >
                 Укр
               </button>
               <button
                 type="button"
                 onClick={() => setCurrentLang("en")}
-                className={`px-2.5 py-1 font-semibold transition-colors ${currentLang === "en"
+                className={`px-2.5 py-1 font-semibold transition-colors ${
+                  currentLang === "en"
                     ? "bg-[#ffe358] text-slate-900"
                     : "bg-transparent text-white hover:bg-white/10"
-                  }`}
+                }`}
               >
                 Eng
               </button>
@@ -119,40 +124,44 @@ export function App() {
             <button
               type="button"
               onClick={() => setActiveTab("registry")}
-              className={`px-3 py-2.5 rounded transition-colors whitespace-nowrap ${activeTab === "registry"
+              className={`px-3 py-2.5 rounded transition-colors whitespace-nowrap ${
+                activeTab === "registry"
                   ? "text-[#ffe358] border-b-2 border-[#ffe358]"
                   : "text-slate-100 hover:text-[#ffe358]"
-                }`}
+              }`}
             >
               Реєстр засідань
             </button>
             <button
               type="button"
               onClick={() => setActiveTab("create")}
-              className={`px-3 py-2.5 rounded transition-colors whitespace-nowrap ${activeTab === "create"
+              className={`px-3 py-2.5 rounded transition-colors whitespace-nowrap ${
+                activeTab === "create"
                   ? "text-[#ffe358] border-b-2 border-[#ffe358]"
                   : "text-slate-100 hover:text-[#ffe358]"
-                }`}
+              }`}
             >
               Реєстрація засідання
             </button>
             <button
               type="button"
               onClick={() => setActiveTab("card")}
-              className={`px-3 py-2.5 rounded transition-colors whitespace-nowrap ${activeTab === "card"
+              className={`px-3 py-2.5 rounded transition-colors whitespace-nowrap ${
+                activeTab === "card"
                   ? "text-[#ffe358] border-b-2 border-[#ffe358]"
                   : "text-slate-100 hover:text-[#ffe358]"
-                }`}
+              }`}
             >
               Картка
             </button>
             <button
               type="button"
               onClick={() => setActiveTab("history")}
-              className={`px-3 py-2.5 rounded transition-colors whitespace-nowrap ${activeTab === "history"
+              className={`px-3 py-2.5 rounded transition-colors whitespace-nowrap ${
+                activeTab === "history"
                   ? "text-[#ffe358] border-b-2 border-[#ffe358]"
                   : "text-slate-100 hover:text-[#ffe358]"
-                }`}
+              }`}
             >
               Історія
             </button>
@@ -194,11 +203,16 @@ export function App() {
       <div className="px-6 pt-4 pb-2">
         <div className="bg-[#f8f9fa] dark:bg-slate-800/80 border border-[#ced4da] dark:border-slate-700 rounded p-3 text-center text-xs md:text-sm text-slate-700 dark:text-slate-200">
           <div>
-            Документ <abbr className="font-bold underline cursor-help" title="Ідентифікатор акта">SPRY-2026/01</abbr>,{" "}
+            Документ{" "}
+            <abbr className="font-bold underline cursor-help" title="Ідентифікатор акта">
+              SPRY-2026/01
+            </abbr>
+            ,{" "}
             <span className="inline-block px-1.5 py-0.5 rounded text-xs font-bold text-[#009d3f] border border-[#009d3f] bg-[#e8f5e9] dark:bg-emerald-950 dark:text-emerald-300 mx-1">
               чинний
             </span>
-            , поточна редакція — <b>Редакція</b> від <span className="font-semibold">01.10.2026</span>, підстава —{" "}
+            , поточна редакція — <b>Редакція</b> від{" "}
+            <span className="font-semibold">01.10.2026</span>, підстава —{" "}
             <a
               href="https://zakon.rada.gov.ua/laws/show/254%D0%BA/96-%D0%B2%D1%80"
               target="_blank"
@@ -215,7 +229,11 @@ export function App() {
           <div className="flex flex-wrap items-center gap-1.5 text-xs">
             <button
               type="button"
-              onClick={() => alert("Інформація: Єдина система обліку пленарних засідань та нарад Spry Monorepo (FastAPI + React + PostgreSQL).")}
+              onClick={() =>
+                alert(
+                  "Інформація: Єдина система обліку пленарних засідань та нарад Spry Monorepo (FastAPI + React + PostgreSQL)."
+                )
+              }
               className="inline-flex items-center gap-1 px-2.5 py-1 rounded border border-[#17a2b8] text-[#17a2b8] hover:bg-[#17a2b8]/10 font-medium transition-colors"
             >
               <Info className="h-3.5 w-3.5" />
@@ -281,7 +299,11 @@ export function App() {
               onClick={toggleDarkMode}
               className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded border border-slate-400 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700 font-medium transition-colors"
             >
-              {isDarkMode ? <Sun className="h-3.5 w-3.5 text-yellow-400" /> : <Moon className="h-3.5 w-3.5" />}
+              {isDarkMode ? (
+                <Sun className="h-3.5 w-3.5 text-yellow-400" />
+              ) : (
+                <Moon className="h-3.5 w-3.5" />
+              )}
               <span>{isDarkMode ? "Світлий режим" : "Темний режим"}</span>
             </button>
           </div>
@@ -313,9 +335,24 @@ export function App() {
           </div>
 
           <div className="flex items-center gap-2">
-            <img src="/rada_assets/t_kQCl.svg" alt="" className="h-4 w-4 opacity-75" title="Терміни" />
-            <img src="/rada_assets/ann_kQCl.svg" alt="" className="h-4 w-4 opacity-75" title="Анотація" />
-            <img src="/rada_assets/link_kQCl.svg" alt="" className="h-4 w-4 opacity-75" title="Пов'язані документи" />
+            <img
+              src="/rada_assets/t_kQCl.svg"
+              alt=""
+              className="h-4 w-4 opacity-75"
+              title="Терміни"
+            />
+            <img
+              src="/rada_assets/ann_kQCl.svg"
+              alt=""
+              className="h-4 w-4 opacity-75"
+              title="Анотація"
+            />
+            <img
+              src="/rada_assets/link_kQCl.svg"
+              alt=""
+              className="h-4 w-4 opacity-75"
+              title="Пов'язані документи"
+            />
             <span className="text-[11px] text-slate-600 dark:text-slate-400 font-mono">
               ВРУ / Секретаріат
             </span>
@@ -338,13 +375,17 @@ export function App() {
           {/* Support and notices */}
           <div className="md:col-span-4 space-y-2 order-2 md:order-1">
             <p className="font-semibold text-slate-800 dark:text-slate-100">
-              Програмно-технічна підтримка — Управління комп'ютеризованих систем Апарату Верховної Ради України
+              Програмно-технічна підтримка — Управління комп'ютеризованих систем Апарату
+              Верховної Ради України
             </p>
             <p>
-              Інформаційне наповнення — Відділ баз даних нормативно-правової інформації та секретаріат «Spry»
+              Інформаційне наповнення — Відділ баз даних нормативно-правової інформації та
+              секретаріат «Spry»
             </p>
             <div className="p-2.5 rounded bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 text-[11px] leading-relaxed text-amber-900 dark:text-amber-200 mt-3">
-              Деякі функції знаходяться у режимі тестової експлуатації. Якщо Ви побачили помилку в тексті або роботі системи, виділіть її мишкою та натисніть Ctrl+Enter.
+              Деякі функції знаходяться у режимі тестової експлуатації. Якщо Ви побачили
+              помилку в тексті або роботі системи, виділіть її мишкою та натисніть
+              Ctrl+Enter.
             </div>
             <p className="text-[11px] text-slate-500 dark:text-slate-400 pt-2">
               Весь контент доступний за ліцензією{" "}
@@ -364,29 +405,146 @@ export function App() {
           <div className="md:col-span-8 order-1 md:order-2">
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
               <div className="space-y-1.5">
-                <div><a href="https://zakon.rada.gov.ua/laws/main/a" target="_blank" rel="noreferrer" className="rada-link">Всі документи</a></div>
-                <div><a href="https://zakon.rada.gov.ua/laws/main/nn" target="_blank" rel="noreferrer" className="rada-link">Нові надходження</a></div>
-                <div><a href="https://zakon.rada.gov.ua/laws/main/d" target="_blank" rel="noreferrer" className="rada-link">Популярні документи</a></div>
-                <div><a href="https://zakon.rada.gov.ua/laws/main/perv" target="_blank" rel="noreferrer" className="rada-link">Первинні законодавчі акти</a></div>
+                <div>
+                  <a
+                    href="https://zakon.rada.gov.ua/laws/main/a"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="rada-link"
+                  >
+                    Всі документи
+                  </a>
+                </div>
+                <div>
+                  <a
+                    href="https://zakon.rada.gov.ua/laws/main/nn"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="rada-link"
+                  >
+                    Нові надходження
+                  </a>
+                </div>
+                <div>
+                  <a
+                    href="https://zakon.rada.gov.ua/laws/main/d"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="rada-link"
+                  >
+                    Популярні документи
+                  </a>
+                </div>
+                <div>
+                  <a
+                    href="https://zakon.rada.gov.ua/laws/main/perv"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="rada-link"
+                  >
+                    Первинні законодавчі акти
+                  </a>
+                </div>
               </div>
               <div className="space-y-1.5">
-                <div><a href="https://zakon.rada.gov.ua/laws/main/groups" target="_blank" rel="noreferrer" className="rada-link">Групи документів</a></div>
-                <div><a href="https://zakon.rada.gov.ua/laws/main/koms" target="_blank" rel="noreferrer" className="rada-link">Розподіл за комітетами ВРУ</a></div>
-                <div><a href="https://zakon.rada.gov.ua/laws/main/termin" target="_blank" rel="noreferrer" className="rada-link">Термінологія законодавства</a></div>
-                <div><a href="https://zakon.rada.gov.ua/laws/main/eurovoc" target="_blank" rel="noreferrer" className="rada-link">Тезаурус "EUROVOC"</a></div>
+                <div>
+                  <a
+                    href="https://zakon.rada.gov.ua/laws/main/groups"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="rada-link"
+                  >
+                    Групи документів
+                  </a>
+                </div>
+                <div>
+                  <a
+                    href="https://zakon.rada.gov.ua/laws/main/koms"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="rada-link"
+                  >
+                    Розподіл за комітетами ВРУ
+                  </a>
+                </div>
+                <div>
+                  <a
+                    href="https://zakon.rada.gov.ua/laws/main/termin"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="rada-link"
+                  >
+                    Термінологія законодавства
+                  </a>
+                </div>
+                <div>
+                  <a
+                    href="https://zakon.rada.gov.ua/laws/main/eurovoc"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="rada-link"
+                  >
+                    Тезаурус "EUROVOC"
+                  </a>
+                </div>
               </div>
               <div className="space-y-1.5">
-                <div><a href="https://zakon.rada.gov.ua/laws/main/klas" target="_blank" rel="noreferrer" className="rada-link">Юридична класифікація</a></div>
-                <div><a href="https://zakon.rada.gov.ua/laws/main/days" target="_blank" rel="noreferrer" className="rada-link">Календар офіційних свят</a></div>
-                <div><a href="https://zakon.rada.gov.ua/laws/main/rules" target="_blank" rel="noreferrer" className="rada-link">Правила користування</a></div>
-                <div><a href="https://zakon.rada.gov.ua/laws/main/contact" target="_blank" rel="noreferrer" className="rada-link">Контактна інформація</a></div>
+                <div>
+                  <a
+                    href="https://zakon.rada.gov.ua/laws/main/klas"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="rada-link"
+                  >
+                    Юридична класифікація
+                  </a>
+                </div>
+                <div>
+                  <a
+                    href="https://zakon.rada.gov.ua/laws/main/days"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="rada-link"
+                  >
+                    Календар офіційних свят
+                  </a>
+                </div>
+                <div>
+                  <a
+                    href="https://zakon.rada.gov.ua/laws/main/rules"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="rada-link"
+                  >
+                    Правила користування
+                  </a>
+                </div>
+                <div>
+                  <a
+                    href="https://zakon.rada.gov.ua/laws/main/contact"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="rada-link"
+                  >
+                    Контактна інформація
+                  </a>
+                </div>
               </div>
             </div>
           </div>
         </div>
 
         <div className="border-t border-[#ced4da] dark:border-slate-700 mt-6 pt-4 text-center font-medium text-slate-600 dark:text-slate-400">
-          &copy; <a href="https://www.rada.gov.ua/" target="_blank" rel="noreferrer" className="rada-link font-semibold">Верховна Рада України</a> 1994-2026. Єдина система обліку засідань Spry.
+          &copy;{" "}
+          <a
+            href="https://www.rada.gov.ua/"
+            target="_blank"
+            rel="noreferrer"
+            className="rada-link font-semibold"
+          >
+            Верховна Рада України
+          </a>{" "}
+          1994-2026. Єдина система обліку засідань Spry.
         </div>
       </footer>
     </div>

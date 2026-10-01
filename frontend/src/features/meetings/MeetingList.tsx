@@ -32,8 +32,8 @@ export function MeetingList({ meetings, isLoading }: MeetingListProps) {
           Відомості про засідання у поточному реєстрі відсутні
         </h3>
         <p className="text-xs sm:text-sm mt-1 max-w-md mx-auto italic">
-          Жодного пленарного засідання або наради ще не зареєстровано.
-          Заповніть реєстраційну картку у Розділі I для внесення запису до бази даних.
+          Жодного пленарного засідання або наради ще не зареєстровано. Заповніть
+          реєстраційну картку у Розділі I для внесення запису до бази даних.
         </p>
       </div>
     );
@@ -97,14 +97,16 @@ export function MeetingList({ meetings, isLoading }: MeetingListProps) {
             <div className="flex items-center gap-2">
               <Users className="h-3.5 w-3.5 text-neutral-500 shrink-0" />
               <span>
-                <strong>Кворум та учасники:</strong> {meeting.attendee_count} народних депутатів
+                <strong>Кворум та учасники:</strong> {meeting.attendee_count} народних
+                депутатів
               </span>
             </div>
 
             <div className="flex items-center gap-2">
               <span className="font-mono text-neutral-400">#</span>
               <span>
-                <strong>Розрахункова тривалість:</strong> {calculateDuration(meeting.starts_at, meeting.ends_at)}
+                <strong>Розрахункова тривалість:</strong>{" "}
+                {calculateDuration(meeting.starts_at, meeting.ends_at)}
               </span>
             </div>
           </div>
@@ -113,7 +115,11 @@ export function MeetingList({ meetings, isLoading }: MeetingListProps) {
           <div className="flex flex-wrap items-center gap-3 pt-3 mt-3 border-t border-dashed border-neutral-200 dark:border-slate-700 text-xs font-sans">
             <button
               type="button"
-              onClick={() => alert(`Картка засідання №${meeting.id} від ${formatDateTime(meeting.starts_at)}.`)}
+              onClick={() =>
+                alert(
+                  `Картка засідання №${meeting.id} від ${formatDateTime(meeting.starts_at)}.`
+                )
+              }
               className="text-[#004bc1] hover:underline flex items-center gap-1 font-medium"
             >
               <ExternalLink className="h-3 w-3" />
@@ -122,7 +128,9 @@ export function MeetingList({ meetings, isLoading }: MeetingListProps) {
             <span className="text-neutral-300 dark:text-neutral-600">&bull;</span>
             <button
               type="button"
-              onClick={() => alert(`Стенограма засідання №${meeting.id} відкрита для ознайомлення.`)}
+              onClick={() =>
+                alert(`Стенограма засідання №${meeting.id} відкрита для ознайомлення.`)
+              }
               className="text-[#004bc1] hover:underline font-medium"
             >
               Стенограма
