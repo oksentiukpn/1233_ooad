@@ -59,3 +59,10 @@ variable "oauth_client_secret" {
   sensitive   = true
   default     = ""
 }
+
+variable "resend_api_key" {
+  description = "Resend API Key for transactional emails"
+  type        = string
+  sensitive   = true
+  default     = ""
+}

@@ -143,6 +143,7 @@ resource "aws_apprunner_service" "backend" {
           PORT                = tostring(var.app_port)
           OAUTH_CLIENT_ID     = var.oauth_client_id
           OAUTH_CLIENT_SECRET = var.oauth_client_secret
+          RESEND_API_KEY      = var.resend_api_key
         }
       }
     }

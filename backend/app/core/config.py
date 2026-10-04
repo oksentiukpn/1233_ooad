@@ -29,6 +29,10 @@ class Settings(BaseSettings):
     JWT_ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7  # 7 days
 
+    # Resend Email Integration
+    RESEND_API_KEY: str = ""
+    RESEND_FROM_EMAIL: str = "Spry <onboarding@resend.dev>"
+
     @property
     def effective_google_client_id(self) -> str:
         return self.GOOGLE_CLIENT_ID or self.OAUTH_CLIENT_ID

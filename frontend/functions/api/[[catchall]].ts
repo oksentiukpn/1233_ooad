@@ -11,12 +11,27 @@ export async function onRequest(context: { request: Request }) {
   headers.set("x-forwarded-host", "1233.pp.ua");
   headers.set("x-forwarded-proto", "https");
 
-  const modifiedRequest = new Request(targetUrl.toString(), {
+  const isGetOrHead =
+    context.request.method === "GET" || context.request.method === "HEAD";
+
+  const response = await fetch(targetUrl.toString(), {
     method: context.request.method,
     headers: headers,
-    body: context.request.body,
+    body: isGetOrHead ? undefined : context.request.body,
     redirect: "manual",
   });
 
-  return fetch(modifiedRequest);
+  // Pass 301/302 redirects (such as Google OAuth login) directly through to the client
+  if (
+    response.status >= 300 &&
+    response.status < 400 &&
+    response.headers.has("Location")
+  ) {
+    return new Response(null, {
+      status: response.status,
+      headers: response.headers,
+    });
+  }
+
+  return response;
 }

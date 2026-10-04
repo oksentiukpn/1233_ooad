@@ -4,7 +4,16 @@ import urllib.parse
 from typing import Optional
 
 import httpx
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
+from fastapi import (
+    APIRouter,
+    BackgroundTasks,
+    Depends,
+    HTTPException,
+    Query,
+    Request,
+    Response,
+    status,
+)
 from fastapi.responses import RedirectResponse
 from pydantic import BaseModel
 from sqlalchemy import select
@@ -19,6 +28,7 @@ from app.core.security import (
 )
 from app.models.user import User
 from app.schemas.user import TokenResponse, UserRead
+from app.services.email import send_welcome_email
 
 logger = logging.getLogger(__name__)
 
@@ -93,6 +103,7 @@ async def google_callback(
     code: Optional[str] = Query(None),
     error: Optional[str] = Query(None),
     state: Optional[str] = Query(None),
+    background_tasks: BackgroundTasks = None,
     db: Session = Depends(get_db),
 ):
     return_to = "/"
@@ -183,6 +194,7 @@ async def google_callback(
     user = db.scalar(
         select(User).where((User.google_id == google_id) | (User.email == email))
     )
+    is_new = False
     if user:
         user.google_id = google_id
         if name:
@@ -190,6 +202,7 @@ async def google_callback(
         if picture:
             user.avatar_url = picture
     else:
+        is_new = True
         user = User(
             google_id=google_id,
             email=email,
@@ -200,6 +213,11 @@ async def google_callback(
 
     db.commit()
     db.refresh(user)
+
+    if is_new and background_tasks:
+        background_tasks.add_task(
+            send_welcome_email, user_email=user.email, user_name=user.name
+        )
 
     # 4. Generate application JWT
     jwt_token = create_access_token(
