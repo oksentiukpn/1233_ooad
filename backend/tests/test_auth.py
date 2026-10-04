@@ -5,13 +5,25 @@ from app.core.security import create_access_token
 from app.models.user import User
 
 
-def test_google_login_redirect(client: TestClient):
+def test_google_login_redirect(client: TestClient, monkeypatch):
+    monkeypatch.setattr(
+        "app.core.config.settings.OAUTH_CLIENT_ID",
+        "test-google-client-id.apps.googleusercontent.com",
+    )
     response = client.get("/api/auth/google/login", follow_redirects=False)
     assert response.status_code == 302
     location = response.headers.get("location", "")
     assert "accounts.google.com" in location
     assert "client_id=" in location
     assert "response_type=code" in location
+
+
+def test_google_login_missing_client_id(client: TestClient, monkeypatch):
+    monkeypatch.setattr("app.core.config.settings.OAUTH_CLIENT_ID", "")
+    monkeypatch.setattr("app.core.config.settings.GOOGLE_CLIENT_ID", "")
+    response = client.get("/api/auth/google/login", follow_redirects=False)
+    assert response.status_code == 500
+    assert "Google OAuth Client ID не налаштовано" in response.json()["detail"]
 
 
 def test_auth_me_unauthorized(client: TestClient):

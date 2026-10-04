@@ -1,7 +1,11 @@
 import os
 
-# Set DATABASE_URL to in-memory SQLite before app/db imports
+# Set test environment variables before app/db imports
 os.environ["DATABASE_URL"] = "sqlite:///:memory:"
+os.environ.setdefault(
+    "OAUTH_CLIENT_ID", "test-google-client-id.apps.googleusercontent.com"
+)
+os.environ.setdefault("OAUTH_CLIENT_SECRET", "test-google-client-secret")
 
 import pytest  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
