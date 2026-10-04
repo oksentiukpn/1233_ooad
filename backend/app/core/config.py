@@ -15,6 +15,28 @@ class Settings(BaseSettings):
         "https://api.1233.pp.ua",
     ]
 
+    # Google OAuth credentials (supports both OAUTH_* and GOOGLE_* names)
+    OAUTH_CLIENT_ID: str = ""
+    OAUTH_CLIENT_SECRET: str = ""
+    GOOGLE_CLIENT_ID: str = ""
+    GOOGLE_CLIENT_SECRET: str = ""
+
+    # Frontend URL for post-login redirects
+    FRONTEND_URL: str = "https://1233.pp.ua"
+
+    # JWT Authentication configuration
+    JWT_SECRET_KEY: str = "spry-super-secret-jwt-key-2026-production"
+    JWT_ALGORITHM: str = "HS256"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7  # 7 days
+
+    @property
+    def effective_google_client_id(self) -> str:
+        return self.GOOGLE_CLIENT_ID or self.OAUTH_CLIENT_ID
+
+    @property
+    def effective_google_client_secret(self) -> str:
+        return self.GOOGLE_CLIENT_SECRET or self.OAUTH_CLIENT_SECRET
+
     @field_validator("CORS_ORIGINS", mode="before")
     @classmethod
     def assemble_cors_origins(cls, v: Union[str, List[str]]) -> List[str]:
@@ -25,9 +47,10 @@ class Settings(BaseSettings):
         raise ValueError(v)
 
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=(".env", "../.env"),
         env_file_encoding="utf-8",
         case_sensitive=True,
+        extra="ignore",
     )
 
 

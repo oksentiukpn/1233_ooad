@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { MeetingsPage } from "@/features/meetings/MeetingsPage";
+import { AuthButton } from "@/features/auth/AuthButton";
 import {
-  UserCircle2,
   Search,
   Info,
   Download,
@@ -78,17 +78,10 @@ export function App() {
             </a>
           </div>
 
-          {/* Right Services block */}
+          {/* Right Services block: Google OAuth and Language switch */}
           <div className="flex items-center gap-3 shrink-0 self-end md:self-auto">
-            <a
-              href="https://itd.rada.gov.ua/idsrv/"
-              target="_blank"
-              rel="noreferrer"
-              className="hidden sm:inline-flex items-center gap-2 bg-[#0e317e] hover:bg-[#184dbd] text-white text-xs font-semibold px-3 py-2 rounded border border-blue-400/40 shadow-sm transition-colors"
-            >
-              <UserCircle2 className="h-4 w-4" />
-              <span>Електронний кабінет</span>
-            </a>
+            {/* Google OAuth Authentication Widget */}
+            <AuthButton />
 
             {/* Language switcher */}
             <div className="inline-flex rounded border border-white/30 text-xs overflow-hidden">

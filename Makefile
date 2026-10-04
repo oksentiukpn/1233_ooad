@@ -110,9 +110,9 @@ format-check:
 test: lint format-check
 	@echo "--> Checking backend tests..."
 	@if [ -f "$(VENV)/bin/pytest" ] && $(VENV)/bin/python -c "import fastapi, pytest" >/dev/null 2>&1; then \
-		cd backend && $(VENV)/bin/pytest tests; \
+		$(VENV)/bin/pytest backend/tests; \
 	elif command -v pytest >/dev/null 2>&1 && python3 -c "import fastapi, pytest" >/dev/null 2>&1; then \
-		cd backend && pytest tests; \
+		pytest backend/tests; \
 	else \
 		echo "--> Verifying Python code compilation syntax..."; \
 		$(PYTHON) -m compileall backend/app backend/tests; \

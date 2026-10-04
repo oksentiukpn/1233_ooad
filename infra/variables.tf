@@ -46,3 +46,16 @@ variable "enable_cloudfront" {
   type        = bool
   default     = false
 }
+
+variable "oauth_client_id" {
+  description = "Google OAuth Client ID"
+  type        = string
+  default     = ""
+}
+
+variable "oauth_client_secret" {
+  description = "Google OAuth Client Secret"
+  type        = string
+  sensitive   = true
+  default     = ""
+}

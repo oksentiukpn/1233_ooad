@@ -138,9 +138,11 @@ resource "aws_apprunner_service" "backend" {
       image_configuration {
         port = tostring(var.app_port)
         runtime_environment_variables = {
-          DATABASE_URL = "postgresql+psycopg://${var.db_username}:${var.db_password}@${aws_db_instance.postgres.endpoint}/${var.project_name}"
-          CORS_ORIGINS = jsonencode(["*"])
-          PORT         = tostring(var.app_port)
+          DATABASE_URL        = "postgresql+psycopg://${var.db_username}:${var.db_password}@${aws_db_instance.postgres.endpoint}/${var.project_name}"
+          CORS_ORIGINS        = jsonencode(["*"])
+          PORT                = tostring(var.app_port)
+          OAUTH_CLIENT_ID     = var.oauth_client_id
+          OAUTH_CLIENT_SECRET = var.oauth_client_secret
         }
       }
     }
