@@ -7,11 +7,15 @@ export async function onRequest(context: { request: Request }) {
   const url = new URL(context.request.url);
   const targetUrl = new URL(url.pathname + url.search, BACKEND_URL);
 
+  const headers = new Headers(context.request.headers);
+  headers.set("x-forwarded-host", "1233.pp.ua");
+  headers.set("x-forwarded-proto", "https");
+
   const modifiedRequest = new Request(targetUrl.toString(), {
     method: context.request.method,
-    headers: context.request.headers,
+    headers: headers,
     body: context.request.body,
-    redirect: "follow",
+    redirect: "manual",
   });
 
   return fetch(modifiedRequest);

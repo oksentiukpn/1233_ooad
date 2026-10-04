@@ -41,7 +41,8 @@ def _resolve_redirect_uri(request: Request, override_uri: Optional[str] = None) 
     )
     proto = request.headers.get("x-forwarded-proto") or request.url.scheme
 
-    if "1233.pp.ua" in host:
+    # Always use production domain for 1233.pp.ua or App Runner hosts
+    if "1233.pp.ua" in host or "awsapprunner.com" in host:
         return "https://1233.pp.ua/api/auth/google/callback"
 
     # Default local / current host
