@@ -1,18 +1,8 @@
 import { useState, useEffect } from "react";
 import { MeetingsPage } from "@/features/meetings/MeetingsPage";
 import { AuthButton } from "@/features/auth/AuthButton";
-import {
-  Search,
-  Info,
-  Download,
-  FolderOpen,
-  ListTree,
-  Printer,
-  Sun,
-  Moon,
-  Scale,
-  ExternalLink,
-} from "lucide-react";
+import { handleCognitoCallback } from "@/lib/authApi";
+import { Search, Info, Download, Printer, Sun, Moon, Loader2 } from "lucide-react";
 
 export function App() {
   const [isDarkMode, setIsDarkMode] = useState(false);
@@ -21,6 +11,30 @@ export function App() {
     "registry"
   );
   const [currentLang, setCurrentLang] = useState<"uk" | "en">("uk");
+  const [isProcessingAuth, setIsProcessingAuth] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Check if handling Cognito / Google OAuth Callback
+    const urlParams = new URLSearchParams(window.location.search);
+    const code = urlParams.get("code");
+    const isCallbackPath =
+      window.location.pathname.includes("/auth/callback") || code !== null;
+
+    if (code && isCallbackPath) {
+      setIsProcessingAuth(true);
+      handleCognitoCallback(code)
+        .then(() => {
+          // Clean URL and redirect to root
+          window.location.href = "/";
+        })
+        .catch((err) => {
+          console.error("Auth callback error:", err);
+          setAuthError(err.message || "Помилка авторизації");
+          setIsProcessingAuth(false);
+        });
+    }
+  }, []);
 
   useEffect(() => {
     if (isDarkMode) {
@@ -38,8 +52,33 @@ export function App() {
     window.print();
   };
 
+  if (isProcessingAuth) {
+    return (
+      <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center text-white gap-4">
+        <Loader2 className="h-8 w-8 animate-spin text-[#ffe358]" />
+        <h2 className="text-lg font-semibold">Обробка входу через Google / Cognito...</h2>
+        <p className="text-sm text-slate-400">
+          Будь ласка, зачекайте, триває обмін токенів авторизації.
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="rada-page-container">
+      {authError && (
+        <div className="bg-red-600 text-white px-4 py-2 text-center text-xs font-semibold flex items-center justify-center gap-2">
+          <span>{authError}</span>
+          <button
+            type="button"
+            onClick={() => setAuthError(null)}
+            className="underline ml-2"
+          >
+            Закрити
+          </button>
+        </div>
+      )}
+
       {/* 1. TOP HEADER (RADA STATE BRANDING) */}
       <header id="header" className="rada-header">
         <div className="px-6 py-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -111,16 +150,16 @@ export function App() {
           </div>
         </div>
 
-        {/* 2. PRIMARY NAVY NAVBAR */}
-        <nav className="rada-navbar px-6 py-0 flex flex-wrap items-center justify-between border-t border-blue-900/50">
-          <div className="flex items-center overflow-x-auto space-x-1 sm:space-x-2 py-1 text-sm font-semibold text-white">
+        {/* 2. SUB-NAV / MAIN SEARCH TOOLBAR */}
+        <nav className="rada-nav px-6 flex flex-wrap items-center justify-between border-t border-blue-900/60 text-xs">
+          <div className="flex flex-wrap items-center gap-1 py-2">
             <button
               type="button"
               onClick={() => setActiveTab("registry")}
-              className={`px-3 py-2.5 rounded transition-colors whitespace-nowrap ${
+              className={`px-3 py-1 rounded font-medium transition-colors ${
                 activeTab === "registry"
-                  ? "text-[#ffe358] border-b-2 border-[#ffe358]"
-                  : "text-slate-100 hover:text-[#ffe358]"
+                  ? "bg-[#ffe358] text-slate-900 shadow-sm"
+                  : "text-white hover:bg-blue-800/60"
               }`}
             >
               Реєстр засідань
@@ -128,55 +167,38 @@ export function App() {
             <button
               type="button"
               onClick={() => setActiveTab("create")}
-              className={`px-3 py-2.5 rounded transition-colors whitespace-nowrap ${
+              className={`px-3 py-1 rounded font-medium transition-colors ${
                 activeTab === "create"
-                  ? "text-[#ffe358] border-b-2 border-[#ffe358]"
-                  : "text-slate-100 hover:text-[#ffe358]"
+                  ? "bg-[#ffe358] text-slate-900 shadow-sm"
+                  : "text-white hover:bg-blue-800/60"
               }`}
             >
-              Реєстрація засідання
+              + Зареєструвати засідання
             </button>
             <button
               type="button"
               onClick={() => setActiveTab("card")}
-              className={`px-3 py-2.5 rounded transition-colors whitespace-nowrap ${
+              className={`px-3 py-1 rounded font-medium transition-colors ${
                 activeTab === "card"
-                  ? "text-[#ffe358] border-b-2 border-[#ffe358]"
-                  : "text-slate-100 hover:text-[#ffe358]"
+                  ? "bg-[#ffe358] text-slate-900 shadow-sm"
+                  : "text-white hover:bg-blue-800/60"
               }`}
             >
-              Картка
+              Картка закону
             </button>
             <button
               type="button"
               onClick={() => setActiveTab("history")}
-              className={`px-3 py-2.5 rounded transition-colors whitespace-nowrap ${
+              className={`px-3 py-1 rounded font-medium transition-colors ${
                 activeTab === "history"
-                  ? "text-[#ffe358] border-b-2 border-[#ffe358]"
-                  : "text-slate-100 hover:text-[#ffe358]"
+                  ? "bg-[#ffe358] text-slate-900 shadow-sm"
+                  : "text-white hover:bg-blue-800/60"
               }`}
             >
-              Історія
-            </button>
-            <a
-              href="https://zakon.rada.gov.ua/laws/main/index"
-              target="_blank"
-              rel="noreferrer"
-              className="px-3 py-2.5 text-slate-100 hover:text-[#ffe358] transition-colors whitespace-nowrap flex items-center gap-1"
-            >
-              <span>Законодавство</span>
-              <ExternalLink className="h-3 w-3 opacity-70" />
-            </a>
-            <button
-              type="button"
-              onClick={handlePrint}
-              className="px-3 py-2.5 text-slate-100 hover:text-[#ffe358] transition-colors whitespace-nowrap"
-            >
-              Текст для друку
+              Історія скликань
             </button>
           </div>
 
-          {/* Quick Search */}
           <div className="flex items-center gap-2 py-2">
             <div className="relative">
               <input
@@ -264,7 +286,9 @@ export function App() {
               onClick={() => setActiveTab("card")}
               className="inline-flex items-center gap-1 px-2.5 py-1 rounded border border-[#007bff] text-[#007bff] hover:bg-[#007bff]/10 font-medium transition-colors"
             >
-              <FolderOpen className="h-3.5 w-3.5" />
+              <span className="h-3.5 w-3.5 flex items-center justify-center font-bold">
+                🗎
+              </span>
               <span>Картка документа</span>
             </button>
             <button
@@ -272,7 +296,9 @@ export function App() {
               onClick={() => setActiveTab("registry")}
               className="inline-flex items-center gap-1 px-2.5 py-1 rounded border border-[#007bff] text-[#007bff] hover:bg-[#007bff]/10 font-medium transition-colors"
             >
-              <ListTree className="h-3.5 w-3.5" />
+              <span className="h-3.5 w-3.5 flex items-center justify-center font-bold">
+                📋
+              </span>
               <span>Зміст засідань</span>
             </button>
             <button
@@ -285,7 +311,6 @@ export function App() {
             </button>
           </div>
 
-          {/* Dark Mode & Social toggle */}
           <div className="flex items-center gap-2 text-xs">
             <button
               type="button"
@@ -302,7 +327,7 @@ export function App() {
           </div>
         </div>
 
-        {/* 5. SECONDARY RIBBON PANEL (EXACTLY AS IN RADA HTML) */}
+        {/* 5. METADATA RIBBON */}
         <div className="rada-ribbon-panel rounded px-3 py-1.5 mt-2 flex flex-wrap items-center justify-between gap-2 text-xs">
           <div className="flex items-center gap-2">
             <span className="font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-1">
@@ -317,16 +342,7 @@ export function App() {
               <option value="2020">01.01.2020</option>
               <option value="1996">28.06.1996</option>
             </select>
-            <button
-              type="button"
-              title="Порівняти редакції"
-              onClick={() => alert("Порівняння редакцій: розбіжностей не виявлено.")}
-              className="p-1 rounded hover:bg-blue-200/50 text-slate-700 dark:text-slate-300"
-            >
-              <Scale className="h-4 w-4" />
-            </button>
           </div>
-
           <div className="flex items-center gap-2">
             <img
               src="/rada_assets/t_kQCl.svg"
@@ -362,173 +378,10 @@ export function App() {
         />
       </main>
 
-      {/* 7. OFFICIAL RADA FOOTER */}
+      {/* 7. FOOTER */}
       <footer className="mt-auto border-t border-[#ced4da] dark:border-slate-700 bg-[#f7f7f7] dark:bg-slate-900 text-slate-700 dark:text-slate-300 text-xs px-6 py-8">
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-8">
-          {/* Support and notices */}
-          <div className="md:col-span-4 space-y-2 order-2 md:order-1">
-            <p className="font-semibold text-slate-800 dark:text-slate-100">
-              Програмно-технічна підтримка — Управління комп'ютеризованих систем Апарату
-              Верховної Ради України
-            </p>
-            <p>
-              Інформаційне наповнення — Відділ баз даних нормативно-правової інформації та
-              секретаріат «Spry»
-            </p>
-            <div className="p-2.5 rounded bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 text-[11px] leading-relaxed text-amber-900 dark:text-amber-200 mt-3">
-              Деякі функції знаходяться у режимі тестової експлуатації. Якщо Ви побачили
-              помилку в тексті або роботі системи, виділіть її мишкою та натисніть
-              Ctrl+Enter.
-            </div>
-            <p className="text-[11px] text-slate-500 dark:text-slate-400 pt-2">
-              Весь контент доступний за ліцензією{" "}
-              <a
-                href="https://creativecommons.org/licenses/by/4.0/deed.uk"
-                target="_blank"
-                rel="noreferrer"
-                className="rada-link"
-              >
-                Creative Commons Attribution 4.0 International license
-              </a>
-              , якщо не зазначено інше.
-            </p>
-          </div>
-
-          {/* Directory links (3 columns on desktop) */}
-          <div className="md:col-span-8 order-1 md:order-2">
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-              <div className="space-y-1.5">
-                <div>
-                  <a
-                    href="https://zakon.rada.gov.ua/laws/main/a"
-                    target="_blank"
-                    rel="noreferrer"
-                    className="rada-link"
-                  >
-                    Всі документи
-                  </a>
-                </div>
-                <div>
-                  <a
-                    href="https://zakon.rada.gov.ua/laws/main/nn"
-                    target="_blank"
-                    rel="noreferrer"
-                    className="rada-link"
-                  >
-                    Нові надходження
-                  </a>
-                </div>
-                <div>
-                  <a
-                    href="https://zakon.rada.gov.ua/laws/main/d"
-                    target="_blank"
-                    rel="noreferrer"
-                    className="rada-link"
-                  >
-                    Популярні документи
-                  </a>
-                </div>
-                <div>
-                  <a
-                    href="https://zakon.rada.gov.ua/laws/main/perv"
-                    target="_blank"
-                    rel="noreferrer"
-                    className="rada-link"
-                  >
-                    Первинні законодавчі акти
-                  </a>
-                </div>
-              </div>
-              <div className="space-y-1.5">
-                <div>
-                  <a
-                    href="https://zakon.rada.gov.ua/laws/main/groups"
-                    target="_blank"
-                    rel="noreferrer"
-                    className="rada-link"
-                  >
-                    Групи документів
-                  </a>
-                </div>
-                <div>
-                  <a
-                    href="https://zakon.rada.gov.ua/laws/main/koms"
-                    target="_blank"
-                    rel="noreferrer"
-                    className="rada-link"
-                  >
-                    Розподіл за комітетами ВРУ
-                  </a>
-                </div>
-                <div>
-                  <a
-                    href="https://zakon.rada.gov.ua/laws/main/termin"
-                    target="_blank"
-                    rel="noreferrer"
-                    className="rada-link"
-                  >
-                    Термінологія законодавства
-                  </a>
-                </div>
-                <div>
-                  <a
-                    href="https://zakon.rada.gov.ua/laws/main/eurovoc"
-                    target="_blank"
-                    rel="noreferrer"
-                    className="rada-link"
-                  >
-                    Тезаурус "EUROVOC"
-                  </a>
-                </div>
-              </div>
-              <div className="space-y-1.5">
-                <div>
-                  <a
-                    href="https://zakon.rada.gov.ua/laws/main/klas"
-                    target="_blank"
-                    rel="noreferrer"
-                    className="rada-link"
-                  >
-                    Юридична класифікація
-                  </a>
-                </div>
-                <div>
-                  <a
-                    href="https://zakon.rada.gov.ua/laws/main/days"
-                    target="_blank"
-                    rel="noreferrer"
-                    className="rada-link"
-                  >
-                    Календар офіційних свят
-                  </a>
-                </div>
-                <div>
-                  <a
-                    href="https://zakon.rada.gov.ua/laws/main/rules"
-                    target="_blank"
-                    rel="noreferrer"
-                    className="rada-link"
-                  >
-                    Правила користування
-                  </a>
-                </div>
-                <div>
-                  <a
-                    href="https://zakon.rada.gov.ua/laws/main/contact"
-                    target="_blank"
-                    rel="noreferrer"
-                    className="rada-link"
-                  >
-                    Контактна інформація
-                  </a>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
         <div className="border-t border-[#ced4da] dark:border-slate-700 mt-6 pt-4 text-center font-medium text-slate-600 dark:text-slate-400">
-          &copy;{" "}
+          ©{" "}
           <a
             href="https://www.rada.gov.ua/"
             target="_blank"

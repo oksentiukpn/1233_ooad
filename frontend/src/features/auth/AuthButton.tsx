@@ -1,6 +1,11 @@
 import { useState, useEffect } from "react";
 import { User } from "@/types/auth";
-import { fetchCurrentUser, logoutUser, getGoogleLoginUrl } from "@/lib/authApi";
+import {
+  fetchCurrentUser,
+  logoutUser,
+  getCognitoLoginUrl,
+  getCognitoLogoutUrl,
+} from "@/lib/authApi";
 import { LogOut, UserCircle2, Loader2 } from "lucide-react";
 
 export function AuthButton() {
@@ -9,13 +14,6 @@ export function AuthButton() {
   const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
-    // Check if returning from Google Auth
-    const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.has("auth") || urlParams.has("auth_error")) {
-      const cleanUrl = window.location.pathname;
-      window.history.replaceState({}, document.title, cleanUrl);
-    }
-
     fetchCurrentUser()
       .then((currUser) => setUser(currUser))
       .finally(() => setLoading(false));
@@ -26,7 +24,7 @@ export function AuthButton() {
       await logoutUser();
       setUser(null);
       setMenuOpen(false);
-      window.location.reload();
+      window.location.href = getCognitoLogoutUrl();
     } catch (e) {
       console.error("Logout failed:", e);
     }
@@ -44,9 +42,9 @@ export function AuthButton() {
   if (!user) {
     return (
       <a
-        href={getGoogleLoginUrl()}
+        href={getCognitoLoginUrl()}
         className="inline-flex items-center gap-2 bg-white hover:bg-slate-100 text-slate-800 text-xs font-semibold px-3 py-1.5 rounded border border-slate-300 shadow-sm transition-all hover:shadow hover:scale-[1.02]"
-        title="Авторизуватися за допомогою Google акаунту"
+        title="Увійти через систему авторизації Cognito (Google або Email)"
       >
         {/* Google Official G Logo */}
         <svg className="h-4 w-4 shrink-0" viewBox="0 0 24 24">
@@ -73,44 +71,44 @@ export function AuthButton() {
   }
 
   return (
-    <div className="relative inline-block text-left">
+    <div className="relative">
       <button
         type="button"
         onClick={() => setMenuOpen(!menuOpen)}
-        className="inline-flex items-center gap-2 bg-[#0e317e] hover:bg-[#184dbd] text-white text-xs font-semibold px-2.5 py-1.5 rounded border border-blue-400/40 shadow-sm transition-colors"
+        className="inline-flex items-center gap-2 bg-[#0e317e] hover:bg-[#153f9e] text-white text-xs font-semibold px-3 py-1.5 rounded border border-blue-300/40 shadow-sm transition-all"
       >
         {user.avatar_url ? (
           <img
             src={user.avatar_url}
             alt={user.name || user.email}
-            className="h-5 w-5 rounded-full object-cover border border-white/40"
+            className="h-4 w-4 rounded-full object-cover ring-1 ring-white/50"
           />
         ) : (
-          <UserCircle2 className="h-5 w-5 text-yellow-300" />
+          <UserCircle2 className="h-4 w-4 text-blue-200" />
         )}
-        <span className="max-w-[130px] truncate">
-          {user.name || user.email.split("@")[0]}
-        </span>
+        <span className="max-w-[140px] truncate">{user.name || user.email}</span>
       </button>
 
       {menuOpen && (
-        <div className="absolute right-0 mt-1.5 w-60 rounded-md shadow-lg bg-white dark:bg-slate-800 ring-1 ring-black ring-opacity-5 z-50 p-2 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700">
-          <div className="px-2 py-1.5 border-b border-slate-100 dark:border-slate-700 text-xs">
-            <p className="font-semibold text-slate-900 dark:text-white truncate">
+        <div className="absolute right-0 mt-1.5 w-60 rounded-md shadow-lg bg-white dark:bg-slate-800 ring-1 ring-black ring-opacity-5 py-1 z-50 text-slate-800 dark:text-slate-100 divide-y divide-slate-100 dark:divide-slate-700">
+          <div className="px-4 py-2">
+            <p className="text-xs font-semibold truncate text-slate-900 dark:text-white">
               {user.name || "Користувач"}
             </p>
             <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
               {user.email}
             </p>
           </div>
-          <button
-            type="button"
-            onClick={handleLogout}
-            className="w-full mt-1.5 flex items-center gap-2 px-2 py-1.5 text-xs text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 rounded transition-colors"
-          >
-            <LogOut className="h-3.5 w-3.5" />
-            <span>Вийти з акаунту</span>
-          </button>
+          <div className="py-1">
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="w-full text-left px-4 py-1.5 text-xs text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 flex items-center gap-2"
+            >
+              <LogOut className="h-3.5 w-3.5" />
+              <span>Вийти</span>
+            </button>
+          </div>
         </div>
       )}
     </div>
