@@ -1,11 +1,14 @@
 import { Meeting, MeetingCreate } from "@/types/meeting";
 
-// Use same-origin /api reverse-proxy when on 1233.pp.ua to eliminate CORS issues entirely
-const rawBase = import.meta.env.VITE_API_URL || "";
-const API_BASE =
-  rawBase && !rawBase.includes("1233.pp.ua")
-    ? `${rawBase.replace(/\/$/, "")}/api`
-    : "/api";
+// Step 4: The browser calls the API directly via baked-in Function URL or NEXT_PUBLIC_API_BASE_URL
+const rawBase =
+  import.meta.env.VITE_API_URL ||
+  import.meta.env.NEXT_PUBLIC_API_BASE_URL ||
+  "";
+
+const API_BASE = rawBase
+  ? `${rawBase.replace(/\/$/, "")}/api`
+  : "/api";
 
 export async function fetchMeetings(): Promise<Meeting[]> {
   const response = await fetch(`${API_BASE}/meetings`, {
@@ -42,9 +45,10 @@ export async function createMeeting(data: MeetingCreate): Promise<Meeting> {
         errorMessage = errorJson.detail;
       }
     } catch {
-      errorMessage = await response.text();
+      const errorText = await response.text();
+      if (errorText) errorMessage = errorText;
     }
-    throw new Error(errorMessage || "Failed to create meeting");
+    throw new Error(errorMessage);
   }
 
   return response.json();

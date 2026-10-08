@@ -1,3 +1,4 @@
+import json
 from typing import List, Union
 
 from pydantic import field_validator
@@ -44,10 +45,18 @@ class Settings(BaseSettings):
     @field_validator("CORS_ORIGINS", mode="before")
     @classmethod
     def assemble_cors_origins(cls, v: Union[str, List[str]]) -> List[str]:
-        if isinstance(v, str) and not v.startswith("["):
+        if isinstance(v, str):
+            v_trimmed = v.strip()
+            if v_trimmed.startswith("[") and v_trimmed.endswith("]"):
+                try:
+                    parsed = json.loads(v_trimmed)
+                    if isinstance(parsed, list):
+                        return [str(item) for item in parsed]
+                except Exception:
+                    pass
             return [i.strip() for i in v.split(",") if i.strip()]
-        elif isinstance(v, (list, str)):
-            return v  # type: ignore[return-value]
+        elif isinstance(v, list):
+            return [str(i) for i in v]
         raise ValueError(v)
 
     model_config = SettingsConfigDict(
