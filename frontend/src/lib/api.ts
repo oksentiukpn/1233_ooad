@@ -2,13 +2,9 @@ import { Meeting, MeetingCreate } from "@/types/meeting";
 
 // Step 4: The browser calls the API directly via baked-in Function URL or NEXT_PUBLIC_API_BASE_URL
 const rawBase =
-  import.meta.env.VITE_API_URL ||
-  import.meta.env.NEXT_PUBLIC_API_BASE_URL ||
-  "";
+  import.meta.env.VITE_API_URL || import.meta.env.NEXT_PUBLIC_API_BASE_URL || "";
 
-const API_BASE = rawBase
-  ? `${rawBase.replace(/\/$/, "")}/api`
-  : "/api";
+const API_BASE = rawBase ? `${rawBase.replace(/\/$/, "")}/api` : "/api";
 
 export async function fetchMeetings(): Promise<Meeting[]> {
   const response = await fetch(`${API_BASE}/meetings`, {
