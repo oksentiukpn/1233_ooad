@@ -1,40 +1,48 @@
 import { useState, useEffect } from "react";
+import { useAuth } from "react-oidc-context";
 import { MeetingsPage } from "@/features/meetings/MeetingsPage";
 import { AuthButton } from "@/features/auth/AuthButton";
-import { handleCognitoCallback } from "@/lib/authApi";
-import { Search, Info, Download, Printer, Sun, Moon, Loader2 } from "lucide-react";
+import {
+  Search,
+  Info,
+  Download,
+  Printer,
+  Sun,
+  Moon,
+  Loader2,
+  AlertCircle,
+} from "lucide-react";
 
 export function App() {
+  const auth = useAuth();
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState<"registry" | "create" | "card" | "history">(
     "registry"
   );
   const [currentLang, setCurrentLang] = useState<"uk" | "en">("uk");
-  const [isProcessingAuth, setIsProcessingAuth] = useState(false);
-  const [authError, setAuthError] = useState<string | null>(null);
 
+  const pathname = typeof window !== "undefined" ? window.location.pathname : "";
+  const isLoginPage =
+    pathname === "/login" || pathname === "/login/" || pathname.startsWith("/login/");
+  const isCallbackPage =
+    pathname.includes("/auth/callback") ||
+    (typeof window !== "undefined" &&
+      new URLSearchParams(window.location.search).has("code"));
+
+  // Step 3: /login/ page calls signinRedirect() as soon as it loads.
   useEffect(() => {
-    // Check if handling Cognito / Google OAuth Callback
-    const urlParams = new URLSearchParams(window.location.search);
-    const code = urlParams.get("code");
-    const isCallbackPath =
-      window.location.pathname.includes("/auth/callback") || code !== null;
-
-    if (code && isCallbackPath) {
-      setIsProcessingAuth(true);
-      handleCognitoCallback(code)
-        .then(() => {
-          // Clean URL and redirect to root
-          window.location.href = "/";
-        })
-        .catch((err) => {
-          console.error("Auth callback error:", err);
-          setAuthError(err.message || "Помилка авторизації");
-          setIsProcessingAuth(false);
-        });
+    if (
+      isLoginPage &&
+      !auth.isAuthenticated &&
+      !auth.isLoading &&
+      !auth.activeNavigator
+    ) {
+      auth.signinRedirect().catch((err) => {
+        console.error("signinRedirect error on /login/ page:", err);
+      });
     }
-  }, []);
+  }, [isLoginPage, auth.isAuthenticated, auth.isLoading, auth.activeNavigator, auth]);
 
   useEffect(() => {
     if (isDarkMode) {
@@ -52,13 +60,36 @@ export function App() {
     window.print();
   };
 
-  if (isProcessingAuth) {
+  // 1. /login/ Dedicated Page: immediately redirecting to Cognito Managed Login
+  if (isLoginPage) {
     return (
-      <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center text-white gap-4">
-        <Loader2 className="h-8 w-8 animate-spin text-[#ffe358]" />
-        <h2 className="text-lg font-semibold">Обробка входу через Google / Cognito...</h2>
-        <p className="text-sm text-slate-400">
-          Будь ласка, зачекайте, триває обмін токенів авторизації.
+      <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center text-white gap-4 p-6 text-center">
+        <Loader2 className="h-10 w-10 animate-spin text-[#ffe358]" />
+        <h2 className="text-xl font-bold">Перенаправлення на сторінку входу...</h2>
+        <p className="text-sm text-slate-300 max-w-md leading-relaxed">
+          Відкривається офіційна форма авторизації Amazon Cognito Managed Login (Email та
+          Google).
+        </p>
+        <button
+          type="button"
+          onClick={() => auth.signinRedirect()}
+          className="mt-2 inline-flex items-center gap-1.5 px-4 py-2 rounded bg-[#ffe358] text-slate-900 text-xs font-semibold hover:bg-[#ebd046] transition-colors shadow"
+        >
+          Натисніть тут, якщо перенаправлення не відбулося автоматично
+        </button>
+      </div>
+    );
+  }
+
+  // 2. /auth/callback/ Dedicated Processing State
+  if (auth.isLoading && isCallbackPage) {
+    return (
+      <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center text-white gap-4 p-6 text-center">
+        <Loader2 className="h-10 w-10 animate-spin text-[#ffe358]" />
+        <h2 className="text-xl font-bold">Обробка авторизації...</h2>
+        <p className="text-sm text-slate-300 max-w-md leading-relaxed">
+          Виконується безпечний OIDC PKCE обмін коду на токени Amazon Cognito.
+          Зачекайте...
         </p>
       </div>
     );
@@ -66,15 +97,17 @@ export function App() {
 
   return (
     <div className="rada-page-container">
-      {authError && (
-        <div className="bg-red-600 text-white px-4 py-2 text-center text-xs font-semibold flex items-center justify-center gap-2">
-          <span>{authError}</span>
+      {/* Auth error notification banner */}
+      {auth.error && (
+        <div className="bg-red-600 text-white px-4 py-2 text-center text-xs font-semibold flex items-center justify-center gap-2 shadow">
+          <AlertCircle className="h-4 w-4 shrink-0" />
+          <span>Помилка OIDC авторизації: {auth.error.message}</span>
           <button
             type="button"
-            onClick={() => setAuthError(null)}
-            className="underline ml-2"
+            onClick={() => (window.location.href = "/")}
+            className="underline ml-2 hover:text-red-100"
           >
-            Закрити
+            На головну
           </button>
         </div>
       )}
@@ -117,9 +150,9 @@ export function App() {
             </a>
           </div>
 
-          {/* Right Services block: Google OAuth and Language switch */}
+          {/* Right Services block: OIDC Cognito Authentication and Language switch */}
           <div className="flex items-center gap-3 shrink-0 self-end md:self-auto">
-            {/* Google OAuth Authentication Widget */}
+            {/* OIDC Authentication Widget (Sign in / Sign out / Email) */}
             <AuthButton />
 
             {/* Language switcher */}

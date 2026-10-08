@@ -1,47 +1,47 @@
-output "ecr_repository_url" {
-  description = "URL of the Amazon ECR repository"
-  value       = aws_ecr_repository.backend.repository_url
-}
-
-output "rds_endpoint" {
-  description = "PostgreSQL Aurora connection endpoint"
-  value       = "${aws_rds_cluster.aurora.endpoint}:${aws_rds_cluster.aurora.port}"
-}
-
-output "rds_address" {
-  description = "PostgreSQL Aurora host address"
-  value       = aws_rds_cluster.aurora.endpoint
-}
-
 output "database_url" {
-  description = "Full SQLAlchemy Database URL for Alembic and application"
+  description = "PostgreSQL Connection URL"
   value       = "postgresql+psycopg://${var.db_username}:${var.db_password}@${aws_rds_cluster.aurora.endpoint}:${aws_rds_cluster.aurora.port}/${var.project_name}?sslmode=require"
   sensitive   = true
 }
 
+output "rds_endpoint" {
+  description = "Aurora Serverless v2 PostgreSQL Endpoint"
+  value       = "${aws_rds_cluster.aurora.endpoint}:${aws_rds_cluster.aurora.port}"
+}
+
+output "rds_address" {
+  description = "Aurora Serverless v2 PostgreSQL Host Address"
+  value       = aws_rds_cluster.aurora.endpoint
+}
+
+output "ecr_repository_url" {
+  description = "Amazon ECR Repository URL"
+  value       = aws_ecr_repository.backend.repository_url
+}
+
 output "lambda_function_name" {
-  description = "Name of the AWS Lambda backend function"
+  description = "Backend AWS Lambda function name"
   value       = length(aws_lambda_function.backend) > 0 ? aws_lambda_function.backend[0].function_name : ""
 }
 
 output "lambda_function_arn" {
-  description = "ARN of the AWS Lambda backend function"
+  description = "Backend AWS Lambda function ARN"
   value       = length(aws_lambda_function.backend) > 0 ? aws_lambda_function.backend[0].arn : ""
 }
 
 output "lambda_function_url" {
-  description = "AWS Lambda Function URL (Public HTTPS endpoint, $0 idle compute)"
+  description = "Backend AWS Lambda Function URL for direct browser access"
   value       = length(aws_lambda_function_url.backend) > 0 ? aws_lambda_function_url.backend[0].function_url : ""
 }
 
 output "frontend_s3_bucket" {
-  description = "S3 bucket name for frontend hosting"
+  description = "Frontend S3 bucket name"
   value       = aws_s3_bucket.frontend.id
 }
 
 output "frontend_s3_website_url" {
-  description = "S3 static website direct URL"
-  value       = "http://${aws_s3_bucket_website_configuration.frontend.website_endpoint}"
+  description = "Frontend S3 static website endpoint"
+  value       = "http://${aws_s3_bucket.frontend.id}.s3-website-${var.aws_region}.amazonaws.com"
 }
 
 output "cloudfront_domain_name" {
@@ -57,6 +57,11 @@ output "cognito_user_pool_id" {
 output "cognito_user_pool_client_id" {
   description = "Cognito User Pool App Client ID"
   value       = aws_cognito_user_pool_client.client.id
+}
+
+output "cognito_authority" {
+  description = "Cognito OIDC Authority URL"
+  value       = "https://cognito-idp.${var.aws_region}.amazonaws.com/${aws_cognito_user_pool.pool.id}"
 }
 
 output "cognito_domain" {

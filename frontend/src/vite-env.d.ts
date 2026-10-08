@@ -4,6 +4,11 @@ interface ImportMetaEnv {
   readonly VITE_API_URL?: string;
   readonly NEXT_PUBLIC_API_BASE_URL?: string;
   readonly VITE_API_PROXY_TARGET?: string;
+  readonly VITE_COGNITO_AUTHORITY?: string;
+  readonly VITE_COGNITO_CLIENT_ID?: string;
+  readonly VITE_COGNITO_DOMAIN?: string;
+  readonly VITE_COGNITO_REDIRECT_URI?: string;
+  readonly VITE_COGNITO_LOGOUT_URI?: string;
 }
 
 interface ImportMeta {

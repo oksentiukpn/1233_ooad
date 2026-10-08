@@ -41,8 +41,17 @@ RUFF                   ?= $(if $(wildcard $(VENV)/bin/ruff),$(VENV)/bin/ruff,ruf
 INFRA_DIR              ?= infra
 DOCKER                 ?= $(shell if docker info >/dev/null 2>&1; then echo docker; elif command -v podman >/dev/null 2>&1; then echo podman; else echo docker; fi)
 
-# Step 4: Resolve API URL from Terraform or AWS Lambda Function URL
+# Step 3 & 4: Resolve API and Cognito Auth parameters from Terraform outputs
 API_URL                ?= $(shell terraform -chdir=$(INFRA_DIR) output -raw lambda_function_url 2>/dev/null || aws lambda get-function-url-config --function-name $(LAMBDA_FUNCTION_NAME) --region $(AWS_REGION) --query "FunctionUrl" --output text 2>/dev/null)
+COGNITO_USER_POOL_ID   ?= $(shell terraform -chdir=$(INFRA_DIR) output -raw cognito_user_pool_id 2>/dev/null)
+COGNITO_CLIENT_ID      ?= $(shell terraform -chdir=$(INFRA_DIR) output -raw cognito_user_pool_client_id 2>/dev/null)
+COGNITO_DOMAIN         ?= $(shell terraform -chdir=$(INFRA_DIR) output -raw cognito_domain 2>/dev/null)
+COGNITO_AUTHORITY      ?= $(shell terraform -chdir=$(INFRA_DIR) output -raw cognito_authority 2>/dev/null)
+ifeq ($(strip $(COGNITO_AUTHORITY)),)
+COGNITO_AUTHORITY      = https://cognito-idp.$(AWS_REGION).amazonaws.com/$(COGNITO_USER_POOL_ID)
+endif
+COGNITO_REDIRECT_URI   ?= https://1233.pp.ua/auth/callback/
+COGNITO_LOGOUT_URI     ?= https://1233.pp.ua/
 
 .PHONY: help install lint format format-check test build build-frontend build-backend \
         deploy-frontend deploy-backend deploy aws-deploy aws-deploy-backend aws-deploy-frontend db-migrate dev down clean \
@@ -132,7 +141,19 @@ build: build-frontend build-backend
 build-frontend:
 	@echo "--> Building frontend production bundle (Vite -> frontend/dist)..."
 	@echo "--> Baking API Base URL into frontend: '$(API_URL)'..."
-	@cd frontend && NEXT_PUBLIC_API_BASE_URL="$(API_URL)" VITE_API_URL="$(API_URL)" npm run build
+	@echo "--> Baking Cognito OIDC config: Authority='$(COGNITO_AUTHORITY)', ClientId='$(COGNITO_CLIENT_ID)'..."
+	@cd frontend && \
+		NEXT_PUBLIC_API_BASE_URL="$(API_URL)" \
+		VITE_API_URL="$(API_URL)" \
+		VITE_COGNITO_AUTHORITY="$(COGNITO_AUTHORITY)" \
+		VITE_COGNITO_CLIENT_ID="$(COGNITO_CLIENT_ID)" \
+		VITE_COGNITO_DOMAIN="$(COGNITO_DOMAIN)" \
+		VITE_COGNITO_REDIRECT_URI="$(COGNITO_REDIRECT_URI)" \
+		VITE_COGNITO_LOGOUT_URI="$(COGNITO_LOGOUT_URI)" \
+		npm run build
+	@mkdir -p frontend/dist/login frontend/dist/auth/callback && \
+		cp frontend/dist/index.html frontend/dist/login/index.html && \
+		cp frontend/dist/index.html frontend/dist/auth/callback/index.html
 
 build-backend:
 	@echo "--> Building backend Lambda container image: $(ECR_IMAGE)..."
@@ -151,10 +172,10 @@ deploy-frontend: build-frontend
 ifeq ($(FRONTEND_DEPLOY_TARGET),cloudflare)
 	@echo "--> [Cloudflare Pages] Deploying frontend/dist to project '$(CLOUDFLARE_PROJECT)'..."
 	@if command -v npx >/dev/null 2>&1 && [ -n "$$CLOUDFLARE_API_TOKEN" ]; then \
-		cd frontend && npx wrangler pages deploy dist --project-name=$(CLOUDFLARE_PROJECT); \
+		cd frontend && npx --yes wrangler pages deploy dist --project-name=$(CLOUDFLARE_PROJECT); \
 	else \
 		echo "[Dry-Run / Missing Token] Command to run:"; \
-		echo "  cd frontend && npx wrangler pages deploy dist --project-name=$(CLOUDFLARE_PROJECT)"; \
+		echo "  cd frontend && npx --yes wrangler pages deploy dist --project-name=$(CLOUDFLARE_PROJECT)"; \
 		echo "(Export CLOUDFLARE_API_TOKEN to trigger real deployment)"; \
 	fi
 else

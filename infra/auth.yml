@@ -111,6 +111,9 @@ Outputs:
   UserPoolClientId:
     Description: Cognito User Pool Client ID
     Value: !Ref UserPoolClient
+  CognitoAuthority:
+    Description: Cognito OIDC Authority URL
+    Value: !Sub 'https://cognito-idp.${AWS::Region}.amazonaws.com/${UserPool}'
   CognitoDomain:
     Description: Cognito Hosted UI Domain
     Value: !Sub 'https://${CognitoDomainPrefix}.auth.${AWS::Region}.amazoncognito.com'

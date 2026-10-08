@@ -1,89 +1,70 @@
-import { User } from "@/types/auth";
+import { AuthProviderProps } from "react-oidc-context";
+import { WebStorageStateStore } from "oidc-client-ts";
 
-// Amazon Cognito Configuration
-const COGNITO_DOMAIN = "https://spry-1233.auth.us-east-1.amazoncognito.com";
-const CLIENT_ID = "3f1rgrm4hrmsuhhbmfjjle9t28";
+export const COGNITO_AUTHORITY =
+  import.meta.env.VITE_COGNITO_AUTHORITY ||
+  "https://cognito-idp.us-east-1.amazonaws.com/us-east-1_7FvYNO3Qp";
 
-export function getCallbackUrl(): string {
+export const COGNITO_CLIENT_ID =
+  import.meta.env.VITE_COGNITO_CLIENT_ID || "3f1rgrm4hrmsuhhbmfjjle9t28";
+
+export const COGNITO_DOMAIN =
+  import.meta.env.VITE_COGNITO_DOMAIN ||
+  "https://spry-1233.auth.us-east-1.amazoncognito.com";
+
+export function getRedirectUri(): string {
   if (typeof window !== "undefined") {
-    const origin = window.location.origin;
-    return `${origin}/auth/callback/`;
-  }
-  return "https://1233.pp.ua/auth/callback/";
-}
-
-export function getCognitoLoginUrl(): string {
-  const redirectUri = encodeURIComponent(getCallbackUrl());
-  return `${COGNITO_DOMAIN}/login?client_id=${CLIENT_ID}&response_type=code&scope=email+openid+profile&redirect_uri=${redirectUri}`;
-}
-
-export function getCognitoLogoutUrl(): string {
-  const logoutUri = encodeURIComponent(
-    typeof window !== "undefined" ? `${window.location.origin}/` : "https://1233.pp.ua/"
-  );
-  return `${COGNITO_DOMAIN}/logout?client_id=${CLIENT_ID}&logout_uri=${logoutUri}`;
-}
-
-// Exchange Cognito code for tokens
-export async function handleCognitoCallback(code: string): Promise<User> {
-  const redirectUri = getCallbackUrl();
-  const tokenUrl = `${COGNITO_DOMAIN}/oauth2/token`;
-
-  const body = new URLSearchParams({
-    grant_type: "authorization_code",
-    client_id: CLIENT_ID,
-    code: code,
-    redirect_uri: redirectUri,
-  });
-
-  const response = await fetch(tokenUrl, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/x-www-form-urlencoded",
-    },
-    body: body.toString(),
-  });
-
-  if (!response.ok) {
-    const errText = await response.text();
-    throw new Error(`Token exchange failed: ${errText}`);
-  }
-
-  const tokens = await response.json();
-  // Decode id_token JWT (payload is 2nd segment)
-  const idToken = tokens.id_token;
-  const payloadBase64 = idToken.split(".")[1];
-  const payloadJson = JSON.parse(
-    atob(payloadBase64.replace(/-/g, "+").replace(/_/g, "/"))
-  );
-
-  const user: User = {
-    id: 1,
-    email: payloadJson.email || payloadJson["cognito:username"] || "user@spry",
-    name: payloadJson.name || payloadJson.email?.split("@")[0] || null,
-    avatar_url: payloadJson.picture || null,
-    created_at: new Date().toISOString(),
-  };
-
-  localStorage.setItem("spry_user", JSON.stringify(user));
-  localStorage.setItem("spry_id_token", idToken);
-  return user;
-}
-
-export async function fetchCurrentUser(): Promise<User | null> {
-  try {
-    const cached = localStorage.getItem("spry_user");
-    if (cached) {
-      return JSON.parse(cached);
+    if (
+      window.location.hostname === "localhost" ||
+      window.location.hostname === "127.0.0.1"
+    ) {
+      return `${window.location.origin}/auth/callback/`;
     }
-    return null;
-  } catch (err) {
-    console.error("Failed to check auth state:", err);
-    return null;
   }
+  return import.meta.env.VITE_COGNITO_REDIRECT_URI || "https://1233.pp.ua/auth/callback/";
 }
 
-export async function logoutUser(): Promise<void> {
-  localStorage.removeItem("spry_user");
-  localStorage.removeItem("spry_id_token");
+export function getLogoutUri(): string {
+  if (typeof window !== "undefined") {
+    if (
+      window.location.hostname === "localhost" ||
+      window.location.hostname === "127.0.0.1"
+    ) {
+      return `${window.location.origin}/`;
+    }
+  }
+  return import.meta.env.VITE_COGNITO_LOGOUT_URI || "https://1233.pp.ua/";
+}
+
+export const oidcConfig: AuthProviderProps = {
+  authority: COGNITO_AUTHORITY,
+  client_id: COGNITO_CLIENT_ID,
+  redirect_uri: getRedirectUri(),
+  response_type: "code",
+  scope: "openid email profile",
+  userStore:
+    typeof window !== "undefined"
+      ? new WebStorageStateStore({ store: window.localStorage })
+      : undefined,
+  onSigninCallback: () => {
+    // When returning from Cognito callback, clean up query params and route to /
+    window.history.replaceState(
+      {},
+      document.title,
+      window.location.pathname.replace(/\/auth\/callback\/?$/, "/") || "/"
+    );
+    if (window.location.pathname.includes("/auth/callback")) {
+      window.location.href = "/";
+    }
+  },
+};
+
+export async function signOutRedirect(auth: {
+  removeUser: () => Promise<void>;
+}): Promise<void> {
+  await auth.removeUser();
+  const logoutUrl = `${COGNITO_DOMAIN}/logout?client_id=${COGNITO_CLIENT_ID}&logout_uri=${encodeURIComponent(
+    getLogoutUri()
+  )}`;
+  window.location.href = logoutUrl;
 }
