@@ -198,7 +198,7 @@ resource "aws_lambda_function" "backend" {
   environment {
     variables = {
       DATABASE_URL        = "postgresql+psycopg://${var.db_username}:${var.db_password}@${aws_rds_cluster.aurora.endpoint}:${aws_rds_cluster.aurora.port}/${var.project_name}?sslmode=require"
-      CORS_ORIGINS        = jsonencode(["*"])
+      CORS_ORIGINS        = jsonencode(["https://1233.pp.ua", "https://www.1233.pp.ua", "http://localhost:5173", "http://localhost:3000"])
       PORT                = tostring(var.app_port)
       OAUTH_CLIENT_ID     = var.oauth_client_id
       OAUTH_CLIENT_SECRET = var.oauth_client_secret
@@ -226,15 +226,6 @@ resource "aws_lambda_function_url" "backend" {
   count              = var.enable_lambda ? 1 : 0
   function_name      = aws_lambda_function.backend[0].function_name
   authorization_type = "NONE"
-
-  cors {
-    allow_credentials = true
-    allow_origins     = ["*"]
-    allow_methods     = ["*"]
-    allow_headers     = ["*"]
-    expose_headers    = ["*"]
-    max_age           = 86400
-  }
 }
 
 resource "aws_lambda_permission" "backend_url" {
