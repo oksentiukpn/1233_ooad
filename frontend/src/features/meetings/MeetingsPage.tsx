@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useAuth } from "react-oidc-context";
 import { Meeting } from "@/types/meeting";
 import { fetchMeetings } from "@/lib/api";
 import { MeetingForm } from "./MeetingForm";
@@ -28,7 +29,11 @@ export function MeetingsPage({
       setMeetings(data);
     } catch (err: unknown) {
       if (err instanceof Error) {
-        setError(err.message);
+        if (err.message.includes("401")) {
+          setError("Потрібна авторизація (HTTP 401). Будь ласка, увійдіть через кнопку «Увійти» у верхній панелі для доступу до даних.");
+        } else {
+          setError(err.message);
+        }
       } else {
         setError("Не вдалося завантажити реєстр засідань з сервера.");
       }
@@ -37,9 +42,13 @@ export function MeetingsPage({
     }
   };
 
+  const auth = useAuth();
+
   useEffect(() => {
-    loadMeetings();
-  }, []);
+    if (!auth.isLoading) {
+      loadMeetings();
+    }
+  }, [auth.isAuthenticated, auth.isLoading]);
 
   const handleMeetingCreated = (newMeeting: Meeting) => {
     setMeetings((prev) => {

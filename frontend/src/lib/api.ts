@@ -1,16 +1,27 @@
 import { Meeting, MeetingCreate } from "@/types/meeting";
+import { getAccessToken } from "./authApi";
 
-// Step 4: The browser calls the API directly via baked-in Function URL or NEXT_PUBLIC_API_BASE_URL
+// The browser calls the API directly via baked-in Function URL or NEXT_PUBLIC_API_BASE_URL
 const rawBase =
   import.meta.env.VITE_API_URL || import.meta.env.NEXT_PUBLIC_API_BASE_URL || "";
 
 const API_BASE = rawBase ? `${rawBase.replace(/\/$/, "")}/api` : "/api";
 
+function getAuthHeaders(): Record<string, string> {
+  const headers: Record<string, string> = {
+    Accept: "application/json",
+  };
+  const token = getAccessToken();
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+  return headers;
+}
+
 export async function fetchMeetings(): Promise<Meeting[]> {
+  const headers = getAuthHeaders();
   const response = await fetch(`${API_BASE}/meetings`, {
-    headers: {
-      Accept: "application/json",
-    },
+    headers,
   });
 
   if (!response.ok) {
@@ -22,12 +33,12 @@ export async function fetchMeetings(): Promise<Meeting[]> {
 }
 
 export async function createMeeting(data: MeetingCreate): Promise<Meeting> {
+  const headers = getAuthHeaders();
+  headers["Content-Type"] = "application/json";
+
   const response = await fetch(`${API_BASE}/meetings`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Accept: "application/json",
-    },
+    headers,
     body: JSON.stringify(data),
   });
 

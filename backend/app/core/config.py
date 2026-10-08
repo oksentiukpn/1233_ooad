@@ -8,6 +8,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     DATABASE_URL: str = "postgresql+psycopg://postgres:postgres@localhost:5432/spry"
     ENVIRONMENT: str = "development"
+    AWS_REGION: str = "us-east-1"
     CORS_ORIGINS: Union[List[str], str] = [
         "http://localhost:5173",
         "http://127.0.0.1:5173",
@@ -21,6 +22,10 @@ class Settings(BaseSettings):
     OAUTH_CLIENT_SECRET: str = ""
     GOOGLE_CLIENT_ID: str = ""
     GOOGLE_CLIENT_SECRET: str = ""
+
+    # Amazon Cognito User Pool configuration
+    COGNITO_USER_POOL_ID: str = "us-east-1_7FvYNO3Qp"
+    COGNITO_CLIENT_ID: str = "3f1rgrm4hrmsuhhbmfjjle9t28"
 
     # Frontend URL for post-login redirects
     FRONTEND_URL: str = "https://1233.pp.ua"
@@ -41,6 +46,14 @@ class Settings(BaseSettings):
     @property
     def effective_google_client_secret(self) -> str:
         return self.GOOGLE_CLIENT_SECRET or self.OAUTH_CLIENT_SECRET
+
+    @property
+    def cognito_iss(self) -> str:
+        return f"https://cognito-idp.{self.AWS_REGION}.amazonaws.com/{self.COGNITO_USER_POOL_ID}"
+
+    @property
+    def cognito_jwks_url(self) -> str:
+        return f"{self.cognito_iss}/.well-known/jwks.json"
 
     @field_validator("CORS_ORIGINS", mode="before")
     @classmethod

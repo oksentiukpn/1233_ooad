@@ -200,9 +200,11 @@ resource "aws_lambda_function" "backend" {
       DATABASE_URL        = "postgresql+psycopg://${var.db_username}:${var.db_password}@${aws_rds_cluster.aurora.endpoint}:${aws_rds_cluster.aurora.port}/${var.project_name}?sslmode=require"
       CORS_ORIGINS        = jsonencode(["https://1233.pp.ua", "https://www.1233.pp.ua", "http://localhost:5173", "http://localhost:3000"])
       PORT                = tostring(var.app_port)
-      OAUTH_CLIENT_ID     = var.oauth_client_id
-      OAUTH_CLIENT_SECRET = var.oauth_client_secret
-      RESEND_API_KEY      = var.resend_api_key
+      OAUTH_CLIENT_ID      = var.oauth_client_id
+      OAUTH_CLIENT_SECRET  = var.oauth_client_secret
+      RESEND_API_KEY       = var.resend_api_key
+      COGNITO_USER_POOL_ID = aws_cognito_user_pool.pool.id
+      COGNITO_CLIENT_ID    = aws_cognito_user_pool_client.client.id
     }
   }
 

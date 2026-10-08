@@ -65,7 +65,11 @@ export function MeetingForm({ onMeetingCreated }: MeetingFormProps) {
       setAttendeeCount(450);
     } catch (err: unknown) {
       if (err instanceof Error) {
-        setError(err.message);
+        if (err.message.includes("401")) {
+          setError("Потрібна авторизація (HTTP 401). Будь ласка, увійдіть через кнопку «Увійти» для створення засідань.");
+        } else {
+          setError(err.message);
+        }
       } else {
         setError("Помилка при реєстрації засідання у базі даних.");
       }

@@ -5,10 +5,11 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
+from app.core.security import require_cognito_auth
 from app.models.meeting import Meeting
 from app.schemas.meeting import MeetingCreate, MeetingResponse
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(require_cognito_auth)])
 
 
 @router.get(
