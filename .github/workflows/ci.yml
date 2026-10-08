@@ -70,7 +70,7 @@ jobs:
         run: npm run build
 
   deploy-backend:
-    name: Step 8 — Backend CD via AWS OIDC (No Static Keys)
+    name: Step 8 — Backend CD to AWS Lambda via OIDC
     needs: [backend-lint-and-test, frontend-lint-and-typecheck]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
@@ -92,50 +92,48 @@ jobs:
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Build, tag with commit SHA, and push image to ECR
+      - name: Build, tag with commit SHA, and push Lambda image to ECR
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           ECR_REPOSITORY: spry-backend
           IMAGE_TAG: ${{ github.sha }}
         run: |
-          echo "Building container image tagged with commit SHA: $IMAGE_TAG"
+          echo "Building Lambda container image tagged with commit SHA: $IMAGE_TAG"
           docker build \
             -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG \
             -t $ECR_REGISTRY/$ECR_REPOSITORY:latest \
-            -f backend/Dockerfile backend
+            -f backend/Dockerfile.lambda backend
 
-          echo "Pushing image to ECR ($ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG)..."
+          echo "Pushing Lambda image to ECR ($ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG)..."
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
 
-      - name: Roll AWS backend service (App Runner / ECS)
+      - name: Deploy to AWS Lambda & Run Programmatic Database Migrations
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           ECR_REPOSITORY: spry-backend
           IMAGE_TAG: ${{ github.sha }}
           AWS_REGION: eu-central-1
+          FUNCTION_NAME: spry-backend
         run: |
-          # 1. Update AWS App Runner (Option 2 — architecture.md)
-          APP_RUNNER_ARN=$(aws apprunner list-services --region "$AWS_REGION" --query "ServiceSummaryList[?ServiceName=='spry-backend'].ServiceArn" --output text 2>/dev/null || true)
-          if [ -n "$APP_RUNNER_ARN" ]; then
-            echo "--> Updating AWS App Runner service ($APP_RUNNER_ARN) to tag: $IMAGE_TAG"
-            SRC_CFG=$(aws apprunner describe-service --service-arn "$APP_RUNNER_ARN" --region "$AWS_REGION" --query "Service.SourceConfiguration" --output json)
-            UPDATED_CFG=$(echo "$SRC_CFG" | jq -c --arg img "$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" '.ImageRepository.ImageIdentifier = $img')
-            aws apprunner update-service \
-              --service-arn "$APP_RUNNER_ARN" \
-              --source-configuration "$UPDATED_CFG" \
-              --region "$AWS_REGION" || aws apprunner start-deployment --service-arn "$APP_RUNNER_ARN" --region "$AWS_REGION" || true
-            echo "--> AWS App Runner updated successfully to tag: $IMAGE_TAG"
-          fi
+          echo "--> Updating AWS Lambda function code to $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG..."
+          aws lambda update-function-code \
+            --function-name "$FUNCTION_NAME" \
+            --image-uri "$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" \
+            --region "$AWS_REGION"
 
-          # 2. Update AWS ECS Service (if ECS cluster is active)
-          ECS_SERVICE_EXISTS=$(aws ecs describe-services --cluster spry-cluster --services spry-backend-service --region "$AWS_REGION" --query "services[?status=='ACTIVE'].serviceName" --output text 2>/dev/null || true)
-          if [ -n "$ECS_SERVICE_EXISTS" ]; then
-            echo "--> Rolling AWS ECS service 'spry-backend-service' on cluster 'spry-cluster' to tag: $IMAGE_TAG"
-            aws ecs update-service \
-              --cluster spry-cluster \
-              --service spry-backend-service \
-              --force-new-deployment \
-              --region "$AWS_REGION"
-            echo "--> AWS ECS service rolling update triggered successfully."
-          fi
+          echo "--> Waiting for Lambda function update to complete..."
+          aws lambda wait function-updated \
+            --function-name "$FUNCTION_NAME" \
+            --region "$AWS_REGION"
+
+          echo "--> Invoking database migrations directly in Lambda (action: migrate)..."
+          aws lambda invoke \
+            --function-name "$FUNCTION_NAME" \
+            --payload '{"action": "migrate"}' \
+            --cli-binary-format raw-in-base64-out \
+            --region "$AWS_REGION" \
+            migration-response.json
+
+          echo "--> Migration output:"
+          cat migration-response.json

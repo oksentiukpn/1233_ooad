@@ -15,13 +15,23 @@ output "rds_address" {
 
 output "database_url" {
   description = "Full SQLAlchemy Database URL for Alembic and application"
-  value       = "postgresql+psycopg://${var.db_username}:${var.db_password}@${aws_db_instance.postgres.endpoint}/${var.project_name}"
+  value       = "postgresql+psycopg://${var.db_username}:${var.db_password}@${aws_db_instance.postgres.endpoint}/${var.project_name}?sslmode=require"
   sensitive   = true
 }
 
-output "apprunner_service_url" {
-  description = "Public URL of the AWS App Runner API"
-  value       = length(aws_apprunner_service.backend) > 0 ? "https://${aws_apprunner_service.backend[0].service_url}" : "App Runner not enabled yet"
+output "lambda_function_name" {
+  description = "Name of the AWS Lambda backend function"
+  value       = length(aws_lambda_function.backend) > 0 ? aws_lambda_function.backend[0].function_name : ""
+}
+
+output "lambda_function_arn" {
+  description = "ARN of the AWS Lambda backend function"
+  value       = length(aws_lambda_function.backend) > 0 ? aws_lambda_function.backend[0].arn : ""
+}
+
+output "lambda_function_url" {
+  description = "AWS Lambda Function URL (Public HTTPS endpoint, $0 idle compute)"
+  value       = length(aws_lambda_function_url.backend) > 0 ? aws_lambda_function_url.backend[0].function_url : ""
 }
 
 output "frontend_s3_bucket" {

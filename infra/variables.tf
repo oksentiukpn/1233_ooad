@@ -35,10 +35,28 @@ variable "app_port" {
   default     = 8000
 }
 
-variable "enable_app_runner" {
-  description = "Whether to provision the App Runner service (requires image to be pushed to ECR first)"
+variable "enable_lambda" {
+  description = "Whether to provision the AWS Lambda backend service (Serverless, $0 idle cost)"
   type        = bool
   default     = true
+}
+
+variable "lambda_memory_size" {
+  description = "Memory allocated to AWS Lambda in MB"
+  type        = number
+  default     = 512
+}
+
+variable "lambda_timeout" {
+  description = "Timeout for AWS Lambda in seconds"
+  type        = number
+  default     = 60
+}
+
+variable "enable_app_runner" {
+  description = "Whether to provision App Runner service (deprecated, migrated to Lambda)"
+  type        = bool
+  default     = false
 }
 
 variable "enable_cloudfront" {

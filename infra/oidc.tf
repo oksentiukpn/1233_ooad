@@ -55,7 +55,7 @@ resource "aws_iam_role" "github_actions" {
   }
 }
 
-# 3. Principle of Least Privilege: ECR + App Runner + ECS Deployment Permissions
+# 3. Principle of Least Privilege: ECR + Lambda + App Runner Deployment Permissions
 resource "aws_iam_role_policy" "github_actions_deploy" {
   name = "spry-github-actions-deploy-policy"
   role = aws_iam_role.github_actions.id
@@ -87,7 +87,22 @@ resource "aws_iam_role_policy" "github_actions_deploy" {
         ]
         Resource = aws_ecr_repository.backend.arn
       },
-      # AWS App Runner Deployment permissions
+      # AWS Lambda Deployment & Migration Invocation permissions
+      {
+        Sid    = "LambdaDeployment"
+        Effect = "Allow"
+        Action = [
+          "lambda:GetFunction",
+          "lambda:GetFunctionConfiguration",
+          "lambda:UpdateFunctionCode",
+          "lambda:UpdateFunctionConfiguration",
+          "lambda:InvokeFunction"
+        ]
+        Resource = [
+          "arn:aws:lambda:${var.aws_region}:${data.aws_caller_identity.current.account_id}:function:${var.project_name}-backend"
+        ]
+      },
+      # AWS App Runner Deployment permissions (retained for backward compatibility)
       {
         Sid    = "AppRunnerServiceRoll"
         Effect = "Allow"

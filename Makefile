@@ -1,15 +1,15 @@
 # ==============================================================================
 # SPRY MONOREPO — DEPLOYMENT & DEVELOPMENT CONTRACT
 # ==============================================================================
-# Reference: arhitecture.md (Section 1 & 2: Cloudflare/S3 + AWS App Runner / ECR in eu-central-1)
-# Cost Efficiency Principle: NFR-8 (<$0.15/active member/mo). Option 2: ~$0.72/day.
+# Reference: architecture-migration.md (Lambda + Function URL in eu-central-1)
+# Cost Efficiency Principle: NFR-8 (<$0.15/active member/mo). Zero Idle Cost ($0).
 # ==============================================================================
 
 SHELL := /bin/bash
 .DEFAULT_GOAL := help
 
 # ------------------------------------------------------------------------------
-# Configuration Variables (Defaults mapped to architecture in arhitecture.md)
+# Configuration Variables (Defaults mapped to architecture in architecture-migration.md)
 # ------------------------------------------------------------------------------
 AWS_REGION             ?= eu-central-1
 AWS_ACCOUNT_ID         ?= $(shell aws sts get-caller-identity --query Account --output text 2>/dev/null || echo "791614297907")
@@ -18,7 +18,7 @@ IMAGE_TAG              ?= $(shell git rev-parse HEAD 2>/dev/null || echo "latest
 ECR_IMAGE              ?= $(AWS_ACCOUNT_ID).dkr.ecr.$(AWS_REGION).amazonaws.com/$(ECR_REPOSITORY):$(IMAGE_TAG)
 
 # Frontend Hosting Strategy:
-# 1. 'cloudflare' (Default in arhitecture.md): Cloudflare Pages — $0/mo free tier, 0 egress fees.
+# 1. 'cloudflare' (Default): Cloudflare Pages — $0/mo free tier, 0 egress fees.
 # 2. 's3' (Generic AWS Fallback): S3 bucket sync + CloudFront invalidation.
 FRONTEND_DEPLOY_TARGET ?= cloudflare
 CLOUDFLARE_PROJECT     ?= 1233-ooad
@@ -26,9 +26,11 @@ S3_BUCKET              ?= spry-frontend-$(AWS_ACCOUNT_ID)
 CLOUDFRONT_DIST_ID     ?= EXXXXXXXXXXXXX
 
 # Backend Hosting Strategy:
-# 1. 'apprunner' (Default in arhitecture.md): AWS App Runner — eliminates $32/mo NAT Gateway & $20/mo ALB.
-# 2. 'ecs' (Generic AWS Fallback): ECS Fargate rolling deployment.
-BACKEND_DEPLOY_TARGET  ?= apprunner
+# 1. 'lambda' (Default per Lab 4): AWS Lambda + Function URL — $0 idle cost.
+# 2. 'apprunner' (Legacy fallback): AWS App Runner.
+# 3. 'ecs' (Generic AWS Fallback): ECS Fargate rolling deployment.
+BACKEND_DEPLOY_TARGET  ?= lambda
+LAMBDA_FUNCTION_NAME   ?= spry-backend
 APP_RUNNER_SERVICE_ARN ?= $(shell aws apprunner list-services --region $(AWS_REGION) --query "ServiceSummaryList[?ServiceName=='spry-backend'].ServiceArn" --output text 2>/dev/null)
 ECS_CLUSTER            ?= spry-cluster
 ECS_SERVICE            ?= spry-backend-service
@@ -40,7 +42,7 @@ INFRA_DIR              ?= infra
 
 .PHONY: help install lint format format-check test build build-frontend build-backend \
         deploy-frontend deploy-backend deploy db-migrate dev down clean \
-        infra-init infra-plan infra-apply-base infra-apply-apprunner infra-destroy deploy-aws
+        infra-init infra-plan infra-apply-base infra-apply-lambda infra-destroy deploy-aws
 
 # ------------------------------------------------------------------------------
 # Help & Documentation
@@ -49,9 +51,9 @@ help:
 	@echo "================================================================================"
 	@echo "                      SPRY MONOREPO — MAKEFILE CONTRACT                         "
 	@echo "================================================================================"
-	@echo "  Architecture: Cloudflare Pages + AWS App Runner / ECR + RDS Postgres"
+	@echo "  Architecture: Cloudflare Pages + AWS Lambda (Function URL) + RDS Postgres"
 	@echo "  Region:       $(AWS_REGION) (Frankfurt, EU Data Residency per NFR-7)"
-	@echo "  Cost Model:   Option 2 (~0.72 USD/day, zero idle NAT Gateways / zero ALB)"
+	@echo "  Cost Model:   Serverless ($0 idle compute, no NAT Gateway, no ALB)"
 	@--------------------------------------------------------------------------------
 	@echo "Local Development & Quality:"
 	@echo "  make install         Install backend and frontend dependencies"
@@ -67,14 +69,15 @@ help:
 	@echo "  make build-frontend  Build static frontend bundle (Vite -> dist/)"
 	@echo "  make build-backend   Build backend container image tagged $(IMAGE_TAG)"
 	@echo "  make deploy-frontend Deploy bundle to Cloudflare Pages (or S3)"
-	@echo "  make deploy-backend  Push commit SHA image to ECR & update App Runner/ECS"
+	@echo "  make deploy-backend  Push commit SHA image to ECR & update Lambda/App Runner"
 	@echo "  make deploy          Deploy full system (backend + frontend)"
 	@echo ""
-	@echo "AWS Infrastructure as Code (Option 2 — Terraform):"
+	@echo "AWS Infrastructure as Code (Terraform):"
 	@echo "  make infra-init      Initialize Terraform in infra/"
 	@echo "  make infra-plan      Preview AWS resources and changes"
+	@echo "  make infra-apply-lambda Provision/Update AWS Lambda service"
 	@echo "  make infra-destroy   Destroy all AWS resources in 1 click (stops all billing)"
-	@echo "  make deploy-aws      Turn-key AWS deployment script (ECR + RDS + App Runner)"
+	@echo "  make deploy-aws      Turn-key AWS deployment script (ECR + RDS + Lambda)"
 	@echo "  make clean           Clean up local build artifacts and caches"
 	@echo "================================================================================"
 
@@ -143,15 +146,15 @@ build-frontend:
 	@cd frontend && npm run build
 
 build-backend:
-	@echo "--> Building backend Docker image: $(ECR_IMAGE)..."
-	@docker build -t $(ECR_IMAGE) -t $(ECR_REPOSITORY):latest -f backend/Dockerfile backend
+	@echo "--> Building backend Lambda container image: $(ECR_IMAGE)..."
+	@docker build -t $(ECR_IMAGE) -t $(ECR_REPOSITORY):latest -f backend/Dockerfile.lambda backend
 
 # ------------------------------------------------------------------------------
 # Deployment Contract (Self-Executable locally or in CI/CD)
 # ------------------------------------------------------------------------------
 
 ## Deploy Frontend
-# Per arhitecture.md:
+# Per architecture-migration.md:
 # - Target 'cloudflare' (Default): Free tier on Cloudflare Pages ($0/mo, 0 egress fees, instant edge invalidation).
 # - Target 's3' (Fallback): Sync to AWS S3 & invalidate AWS CloudFront.
 deploy-frontend: build-frontend
@@ -178,7 +181,7 @@ else
 endif
 	@echo "--> Frontend deployment step complete."
 
-## Deploy Backend (Step 7: Tag with commit SHA, push to ECR, update service)
+## Deploy Backend
 deploy-backend: build-backend
 	@echo "--> [1/2] Pushing image tagged with commit SHA to Amazon ECR ($(AWS_REGION))..."
 	@if command -v aws >/dev/null 2>&1; then \
@@ -191,7 +194,20 @@ deploy-backend: build-backend
 		echo "  aws ecr get-login-password --region $(AWS_REGION) | docker login --username AWS --password-stdin $(AWS_ACCOUNT_ID).dkr.ecr.$(AWS_REGION).amazonaws.com"; \
 		echo "  docker push $(ECR_IMAGE)"; \
 	fi
-ifeq ($(BACKEND_DEPLOY_TARGET),apprunner)
+ifeq ($(BACKEND_DEPLOY_TARGET),lambda)
+	@echo "--> [2/2] [AWS Lambda] Updating function '$(LAMBDA_FUNCTION_NAME)' in $(AWS_REGION)..."
+	@if command -v aws >/dev/null 2>&1; then \
+		aws lambda update-function-code --function-name $(LAMBDA_FUNCTION_NAME) --image-uri $(ECR_IMAGE) --region $(AWS_REGION); \
+		aws lambda wait function-updated --function-name $(LAMBDA_FUNCTION_NAME) --region $(AWS_REGION); \
+		echo "--> Invoking programmatic database migrations via Lambda direct invocation..."; \
+		aws lambda invoke --function-name $(LAMBDA_FUNCTION_NAME) --payload '{"action": "migrate"}' --cli-binary-format raw-in-base64-out --region $(AWS_REGION) /tmp/migration-result.json; \
+		cat /tmp/migration-result.json; echo ""; \
+	else \
+		echo "[Dry-Run / Missing Credentials] Commands to update Lambda:"; \
+		echo "  aws lambda update-function-code --function-name $(LAMBDA_FUNCTION_NAME) --image-uri $(ECR_IMAGE)"; \
+		echo "  aws lambda invoke --function-name $(LAMBDA_FUNCTION_NAME) --payload '{\"action\": \"migrate\"}'"; \
+	fi
+else ifeq ($(BACKEND_DEPLOY_TARGET),apprunner)
 	@echo "--> [2/2] [AWS App Runner] Updating service to tag '$(IMAGE_TAG)' in $(AWS_REGION)..."
 	@RESOLVED_ARN="$(APP_RUNNER_SERVICE_ARN)"; \
 	if [ -z "$$RESOLVED_ARN" ] && command -v aws >/dev/null 2>&1; then \
@@ -206,17 +222,11 @@ ifeq ($(BACKEND_DEPLOY_TARGET),apprunner)
 		else \
 			aws apprunner start-deployment --service-arn "$$RESOLVED_ARN" --region $(AWS_REGION) || true; \
 		fi; \
-	else \
-		echo "[Dry-Run / Missing Credentials] Command to trigger App Runner deployment:"; \
-		echo "  aws apprunner update-service --service-arn <SERVICE_ARN> --source-configuration ..."; \
 	fi
 else
 	@echo "--> [2/2] [AWS ECS Fargate] Updating service '$(ECS_SERVICE)' on cluster '$(ECS_CLUSTER)' to tag '$(IMAGE_TAG)'..."
 	@if command -v aws >/dev/null 2>&1; then \
 		aws ecs update-service --cluster $(ECS_CLUSTER) --service $(ECS_SERVICE) --force-new-deployment; \
-	else \
-		echo "[Dry-Run / Missing Credentials] Command to trigger ECS rolling deployment:"; \
-		echo "  aws ecs update-service --cluster $(ECS_CLUSTER) --service $(ECS_SERVICE) --force-new-deployment"; \
 	fi
 endif
 	@echo "--> Backend deployment step complete."
@@ -229,7 +239,7 @@ deploy: deploy-backend deploy-frontend
 	@echo "================================================================================"
 
 # ------------------------------------------------------------------------------
-# Terraform AWS Turn-Key Targets (Option 2 — ~0.72 USD/day)
+# Terraform AWS Turn-Key Targets
 # ------------------------------------------------------------------------------
 infra-init:
 	@echo "--> Initializing Terraform in $(INFRA_DIR)..."
@@ -241,11 +251,11 @@ infra-plan:
 
 infra-apply-base:
 	@echo "--> Provisioning Base AWS Infrastructure (ECR, RDS, S3, CloudFront)..."
-	@terraform -chdir=$(INFRA_DIR) apply -var="enable_app_runner=false"
+	@terraform -chdir=$(INFRA_DIR) apply -var="enable_lambda=false"
 
-infra-apply-apprunner:
-	@echo "--> Provisioning/Updating AWS App Runner service..."
-	@terraform -chdir=$(INFRA_DIR) apply -var="enable_app_runner=true"
+infra-apply-lambda:
+	@echo "--> Provisioning/Updating AWS Lambda service..."
+	@terraform -chdir=$(INFRA_DIR) apply -var="enable_lambda=true"
 
 infra-destroy:
 	@echo "--> Destroying ALL AWS resources to stop any billing..."

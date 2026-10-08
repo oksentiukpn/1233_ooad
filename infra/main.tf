@@ -54,17 +54,44 @@ resource "aws_db_subnet_group" "rds" {
   description = "Subnet group for Spry RDS PostgreSQL"
 }
 
+resource "aws_security_group" "lambda" {
+  name        = "${var.project_name}-lambda-sg"
+  description = "Security group for Spry Lambda backend"
+  vpc_id      = data.aws_vpc.default.id
+
+  egress {
+    description = "Allow all outbound traffic inside VPC to RDS"
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = {
+    Name    = "${var.project_name}-lambda-sg"
+    Project = var.project_name
+  }
+}
+
 resource "aws_security_group" "rds" {
   name        = "${var.project_name}-rds-sg"
   description = "Allow inbound PostgreSQL traffic"
   vpc_id      = data.aws_vpc.default.id
 
   ingress {
-    description = "PostgreSQL access"
+    description     = "PostgreSQL access from Lambda"
+    from_port       = 5432
+    to_port         = 5432
+    protocol        = "tcp"
+    security_groups = [aws_security_group.lambda.id]
+  }
+
+  ingress {
+    description = "PostgreSQL public access (dev & migrations)"
     from_port   = 5432
     to_port     = 5432
     protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"] # Protected by strong DB master password
+    cidr_blocks = ["0.0.0.0/0"]
   }
 
   egress {
@@ -93,13 +120,17 @@ resource "aws_db_instance" "postgres" {
   backup_retention_period    = 0 # No automated snapshot storage charges
   deletion_protection        = false
   auto_minor_version_upgrade = true
+
+  lifecycle {
+    ignore_changes = [password]
+  }
 }
 
 # ==============================================================================
-# 3. AWS App Runner — Core API (Minimal idle compute, scales to low memory)
+# 3. AWS Lambda Function & Function URL (Serverless API — $0 Idle Cost)
 # ==============================================================================
-resource "aws_iam_role" "apprunner_ecr_access" {
-  name = "${var.project_name}-apprunner-ecr-role"
+resource "aws_iam_role" "lambda" {
+  name = "${var.project_name}-lambda-role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -107,57 +138,96 @@ resource "aws_iam_role" "apprunner_ecr_access" {
       {
         Effect = "Allow"
         Principal = {
-          Service = "build.apprunner.amazonaws.com"
+          Service = "lambda.amazonaws.com"
         }
         Action = "sts:AssumeRole"
       }
     ]
   })
+
+  tags = {
+    Name    = "${var.project_name}-lambda-role"
+    Project = var.project_name
+  }
 }
 
-resource "aws_iam_role_policy_attachment" "apprunner_ecr" {
-  role       = aws_iam_role.apprunner_ecr_access.name
-  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSAppRunnerServicePolicyForECRAccess"
+resource "aws_iam_role_policy_attachment" "lambda_basic" {
+  role       = aws_iam_role.lambda.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
 }
 
-resource "aws_apprunner_service" "backend" {
-  count        = var.enable_app_runner ? 1 : 0
-  service_name = "${var.project_name}-backend"
+resource "aws_iam_role_policy_attachment" "lambda_vpc" {
+  role       = aws_iam_role.lambda.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
+}
 
-  source_configuration {
-    authentication_configuration {
-      access_role_arn = aws_iam_role.apprunner_ecr_access.arn
-    }
+resource "aws_lambda_function" "backend" {
+  count         = var.enable_lambda ? 1 : 0
+  function_name = "${var.project_name}-backend"
+  role          = aws_iam_role.lambda.arn
+  package_type  = "Image"
+  image_uri     = "${aws_ecr_repository.backend.repository_url}:latest"
+  timeout       = var.lambda_timeout
+  memory_size   = var.lambda_memory_size
 
-    auto_deployments_enabled = true
-
-    image_repository {
-      image_identifier      = "${aws_ecr_repository.backend.repository_url}:latest"
-      image_repository_type = "ECR"
-
-      image_configuration {
-        port = tostring(var.app_port)
-        runtime_environment_variables = {
-          DATABASE_URL        = "postgresql+psycopg://${var.db_username}:${var.db_password}@${aws_db_instance.postgres.endpoint}/${var.project_name}"
-          CORS_ORIGINS        = jsonencode(["*"])
-          PORT                = tostring(var.app_port)
-          OAUTH_CLIENT_ID     = var.oauth_client_id
-          OAUTH_CLIENT_SECRET = var.oauth_client_secret
-          RESEND_API_KEY      = var.resend_api_key
-        }
-      }
-    }
+  vpc_config {
+    subnet_ids         = data.aws_subnets.default.ids
+    security_group_ids = [aws_security_group.lambda.id]
   }
 
-  instance_configuration {
-    cpu    = "0.25 vCPU"
-    memory = "0.5 GB" # Minimal idle memory footprint ($0.007/GB-hr -> ~$2.50/mo idle)
+  environment {
+    variables = {
+      DATABASE_URL        = "postgresql+psycopg://${var.db_username}:${var.db_password}@${aws_db_instance.postgres.endpoint}/${var.project_name}?sslmode=require"
+      CORS_ORIGINS        = jsonencode(["*"])
+      PORT                = tostring(var.app_port)
+      OAUTH_CLIENT_ID     = var.oauth_client_id
+      OAUTH_CLIENT_SECRET = var.oauth_client_secret
+      RESEND_API_KEY      = var.resend_api_key
+    }
   }
 
   depends_on = [
-    aws_iam_role_policy_attachment.apprunner_ecr,
+    aws_iam_role_policy_attachment.lambda_basic,
+    aws_iam_role_policy_attachment.lambda_vpc,
     aws_db_instance.postgres
   ]
+
+  tags = {
+    Name    = "${var.project_name}-backend"
+    Project = var.project_name
+  }
+}
+
+resource "aws_lambda_function_url" "backend" {
+  count              = var.enable_lambda ? 1 : 0
+  function_name      = aws_lambda_function.backend[0].function_name
+  authorization_type = "NONE"
+
+  cors {
+    allow_credentials = true
+    allow_origins     = ["*"]
+    allow_methods     = ["*"]
+    allow_headers     = ["*"]
+    expose_headers    = ["*"]
+    max_age           = 86400
+  }
+}
+
+resource "aws_lambda_permission" "backend_url" {
+  count                  = var.enable_lambda ? 1 : 0
+  statement_id           = "FunctionURLAllowPublicAccess"
+  action                 = "lambda:InvokeFunctionUrl"
+  function_name          = aws_lambda_function.backend[0].function_name
+  principal              = "*"
+  function_url_auth_type = "NONE"
+}
+
+resource "aws_lambda_permission" "backend_url_invoke" {
+  count         = var.enable_lambda ? 1 : 0
+  statement_id  = "AllowPublicInvoke"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.backend[0].function_name
+  principal     = "*"
 }
 
 # ==============================================================================
