@@ -30,7 +30,9 @@ export function MeetingsPage({
     } catch (err: unknown) {
       if (err instanceof Error) {
         if (err.message.includes("401")) {
-          setError("Потрібна авторизація (HTTP 401). Будь ласка, увійдіть через кнопку «Увійти» у верхній панелі для доступу до даних.");
+          setError(
+            "Потрібна авторизація (HTTP 401). Будь ласка, увійдіть через кнопку «Увійти» у верхній панелі для доступу до даних."
+          );
         } else {
           setError(err.message);
         }

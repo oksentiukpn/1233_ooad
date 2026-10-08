@@ -123,7 +123,10 @@ def verify_cognito_token(token: str) -> Dict[str, Any]:
     if payload.get("iss") != expected_iss:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=f"Invalid token issuer: expected {expected_iss}, got {payload.get('iss')}",
+            detail=(
+                f"Invalid token issuer: expected {expected_iss}, "
+                f"got {payload.get('iss')}"
+            ),
             headers={"WWW-Authenticate": "Bearer"},
         )
 
@@ -132,7 +135,10 @@ def verify_cognito_token(token: str) -> Dict[str, Any]:
     if token_client_id != settings.COGNITO_CLIENT_ID:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=f"Invalid client_id claim: expected {settings.COGNITO_CLIENT_ID}, got {token_client_id}",
+            detail=(
+                f"Invalid client_id claim: expected {settings.COGNITO_CLIENT_ID}, "
+                f"got {token_client_id}"
+            ),
             headers={"WWW-Authenticate": "Bearer"},
         )
 

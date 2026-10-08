@@ -66,7 +66,9 @@ export function MeetingForm({ onMeetingCreated }: MeetingFormProps) {
     } catch (err: unknown) {
       if (err instanceof Error) {
         if (err.message.includes("401")) {
-          setError("Потрібна авторизація (HTTP 401). Будь ласка, увійдіть через кнопку «Увійти» для створення засідань.");
+          setError(
+            "Потрібна авторизація (HTTP 401). Будь ласка, увійдіть через кнопку «Увійти» для створення засідань."
+          );
         } else {
           setError(err.message);
         }
