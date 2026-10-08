@@ -1,3 +1,6 @@
+import json
+import logging
+import os
 import time
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Optional, Union
@@ -12,11 +15,34 @@ from app.core.config import settings
 from app.core.database import get_db
 from app.models.user import User
 
+logger = logging.getLogger(__name__)
+
+
 # ------------------------------------------------------------------------------
-# Cognito JWKS In-Memory Cache
+# Cognito JWKS In-Memory Cache with Baked Fallback
 # ------------------------------------------------------------------------------
-_JWKS_CACHE: Dict[str, Any] = {}
-_JWKS_LAST_FETCH: float = 0.0
+def _load_fallback_jwks() -> Dict[str, Any]:
+    # 1. From settings if provided as JSON string
+    if getattr(settings, "COGNITO_JWKS", None):
+        try:
+            return json.loads(settings.COGNITO_JWKS)
+        except Exception as e:
+            logger.warning("Failed to parse settings.COGNITO_JWKS: %s", e)
+
+    # 2. From baked file next to security.py
+    fallback_path = os.path.join(os.path.dirname(__file__), "cognito_jwks.json")
+    if os.path.exists(fallback_path):
+        try:
+            with open(fallback_path, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception as e:
+            logger.warning("Failed to read baked cognito_jwks.json: %s", e)
+
+    return {}
+
+
+_JWKS_CACHE: Dict[str, Any] = _load_fallback_jwks()
+_JWKS_LAST_FETCH: float = time.time() if _JWKS_CACHE else 0.0
 _JWKS_TTL_SECONDS: float = 3600.0  # Cache keys for 1 hour
 
 
@@ -35,14 +61,20 @@ def get_jwks(
         return _JWKS_CACHE
 
     try:
-        with httpx.Client(timeout=5.0) as client:
+        with httpx.Client(timeout=3.0) as client:
             resp = client.get(url)
             resp.raise_for_status()
             _JWKS_CACHE = resp.json()
             _JWKS_LAST_FETCH = now
             return _JWKS_CACHE
     except Exception as e:
-        if _JWKS_CACHE:
+        logger.warning("Unable to fetch fresh Cognito JWKS from %s: %s", url, e)
+        fallback = _JWKS_CACHE or _load_fallback_jwks()
+        if fallback:
+            _JWKS_CACHE = fallback
+            _JWKS_LAST_FETCH = (
+                now  # prevent spamming failing network calls on every request
+            )
             return _JWKS_CACHE
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

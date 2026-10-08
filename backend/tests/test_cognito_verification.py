@@ -193,3 +193,26 @@ def test_jwks_caching(rsa_keypair, monkeypatch):
     jwks3 = security.get_jwks(force_refresh=True)
     assert fetch_count == 2
     assert jwks3 == jwks1
+
+
+def test_jwks_network_error_fallback(rsa_keypair, monkeypatch):
+    class FailingHttpxClient:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            pass
+
+        def get(self, url):
+            raise OSError(99, "Cannot assign requested address")
+
+    monkeypatch.setattr(security.httpx, "Client", FailingHttpxClient)
+    security._JWKS_CACHE = {"keys": [rsa_keypair["jwk"]]}
+    security._JWKS_LAST_FETCH = 0.0  # Force it to attempt refresh
+
+    # Should not raise 500, should gracefully return cached/fallback keys
+    jwks = security.get_jwks(force_refresh=True)
+    assert jwks == {"keys": [rsa_keypair["jwk"]]}

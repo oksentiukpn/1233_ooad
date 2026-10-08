@@ -26,6 +26,7 @@ class Settings(BaseSettings):
     # Amazon Cognito User Pool configuration
     COGNITO_USER_POOL_ID: str = "us-east-1_7FvYNO3Qp"
     COGNITO_CLIENT_ID: str = "3f1rgrm4hrmsuhhbmfjjle9t28"
+    COGNITO_JWKS: str = ""
 
     # Frontend URL for post-login redirects
     FRONTEND_URL: str = "https://1233.pp.ua"
