@@ -5,13 +5,13 @@ set -euo pipefail
 # SPRY — Automated AWS Turn-Key Deployment Script (Option 2)
 # ==============================================================================
 # Architecture: Cloudflare/S3+CloudFront + AWS App Runner + RDS PostgreSQL 16
-# Region: eu-central-1 (Frankfurt)
+# Region: us-east-1 (N. Virginia)
 # Estimated Cost: ~$0.72/day (~$21.50/month)
 # ==============================================================================
 
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 INFRA_DIR="${PROJECT_ROOT}/infra"
-AWS_REGION="eu-central-1"
+AWS_REGION="us-east-1"
 
 echo "================================================================================"
 echo "          SPRY — AWS TURN-KEY DEPLOYMENT (OPTION 2: ~0.72 USD/DAY)              "

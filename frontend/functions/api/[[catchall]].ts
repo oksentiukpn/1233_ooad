@@ -6,7 +6,7 @@ interface Env {
 }
 
 const DEFAULT_BACKEND_URL =
-  "https://g72hlurxy25btyitkuad2c4n2q0epdub.lambda-url.eu-central-1.on.aws";
+  "https://o2lag7n6zckjlt4uanqgcwzure0ejyju.lambda-url.us-east-1.on.aws";
 
 export async function onRequest(context: { request: Request; env?: Env }) {
   const backendBase = context.env?.BACKEND_URL || DEFAULT_BACKEND_URL;

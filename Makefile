@@ -1,7 +1,7 @@
 # ==============================================================================
 # SPRY MONOREPO — DEPLOYMENT & DEVELOPMENT CONTRACT
 # ==============================================================================
-# Reference: architecture-migration.md (Lambda + Function URL in eu-central-1)
+# Reference: architecture-migration.md (Lambda + Function URL in us-east-1)
 # Cost Efficiency Principle: NFR-8 (<$0.15/active member/mo). Zero Idle Cost ($0).
 # ==============================================================================
 
@@ -11,7 +11,7 @@ SHELL := /bin/bash
 # ------------------------------------------------------------------------------
 # Configuration Variables (Defaults mapped to architecture in architecture-migration.md)
 # ------------------------------------------------------------------------------
-AWS_REGION             ?= eu-central-1
+AWS_REGION             ?= us-east-1
 AWS_ACCOUNT_ID         ?= $(shell aws sts get-caller-identity --query Account --output text 2>/dev/null || echo "791614297907")
 ECR_REPOSITORY         ?= spry-backend
 IMAGE_TAG              ?= $(shell git rev-parse HEAD 2>/dev/null || echo "latest")
@@ -22,7 +22,7 @@ ECR_IMAGE              ?= $(AWS_ACCOUNT_ID).dkr.ecr.$(AWS_REGION).amazonaws.com/
 # 2. 's3' (Generic AWS Fallback): S3 bucket sync + CloudFront invalidation.
 FRONTEND_DEPLOY_TARGET ?= cloudflare
 CLOUDFLARE_PROJECT     ?= 1233-ooad
-S3_BUCKET              ?= spry-frontend-$(AWS_ACCOUNT_ID)
+S3_BUCKET              ?= spry-frontend-$(AWS_ACCOUNT_ID)-$(AWS_REGION)
 CLOUDFRONT_DIST_ID     ?= EXXXXXXXXXXXXX
 
 # Backend Hosting Strategy:
@@ -39,6 +39,7 @@ PYTHON                 ?= python3
 VENV                   ?= backend/.venv
 RUFF                   ?= $(if $(wildcard $(VENV)/bin/ruff),$(VENV)/bin/ruff,ruff)
 INFRA_DIR              ?= infra
+DOCKER                 ?= $(shell if docker info >/dev/null 2>&1; then echo docker; elif command -v podman >/dev/null 2>&1; then echo podman; else echo docker; fi)
 
 .PHONY: help install lint format format-check test build build-frontend build-backend \
         deploy-frontend deploy-backend deploy db-migrate dev down clean \
@@ -126,11 +127,11 @@ test: lint format-check
 
 dev:
 	@echo "--> Starting Spry local stack (PostgreSQL + Backend + Frontend)..."
-	@docker compose up --build
+	@$(DOCKER) compose up --build
 
 down:
 	@echo "--> Stopping Spry local stack..."
-	@docker compose down
+	@$(DOCKER) compose down
 
 db-migrate:
 	@echo "--> Running database migrations with Alembic..."
@@ -147,7 +148,7 @@ build-frontend:
 
 build-backend:
 	@echo "--> Building backend Lambda container image: $(ECR_IMAGE)..."
-	@docker build -t $(ECR_IMAGE) -t $(ECR_REPOSITORY):latest -f backend/Dockerfile.lambda backend
+	@$(DOCKER) build -t $(ECR_IMAGE) -t $(ECR_REPOSITORY):latest -f backend/Dockerfile.lambda backend
 
 # ------------------------------------------------------------------------------
 # Deployment Contract (Self-Executable locally or in CI/CD)
@@ -185,13 +186,13 @@ endif
 deploy-backend: build-backend
 	@echo "--> [1/2] Pushing image tagged with commit SHA to Amazon ECR ($(AWS_REGION))..."
 	@if command -v aws >/dev/null 2>&1; then \
-		aws ecr get-login-password --region $(AWS_REGION) | docker login --username AWS --password-stdin $(AWS_ACCOUNT_ID).dkr.ecr.$(AWS_REGION).amazonaws.com; \
-		docker push $(ECR_IMAGE); \
-		docker tag $(ECR_IMAGE) $(AWS_ACCOUNT_ID).dkr.ecr.$(AWS_REGION).amazonaws.com/$(ECR_REPOSITORY):latest; \
-		docker push $(AWS_ACCOUNT_ID).dkr.ecr.$(AWS_REGION).amazonaws.com/$(ECR_REPOSITORY):latest; \
+		aws ecr get-login-password --region $(AWS_REGION) | $(DOCKER) login --username AWS --password-stdin $(AWS_ACCOUNT_ID).dkr.ecr.$(AWS_REGION).amazonaws.com; \
+		$(DOCKER) push $(ECR_IMAGE); \
+		$(DOCKER) tag $(ECR_IMAGE) $(AWS_ACCOUNT_ID).dkr.ecr.$(AWS_REGION).amazonaws.com/$(ECR_REPOSITORY):latest; \
+		$(DOCKER) push $(AWS_ACCOUNT_ID).dkr.ecr.$(AWS_REGION).amazonaws.com/$(ECR_REPOSITORY):latest; \
 	else \
 		echo "[Dry-Run / Missing Credentials] Commands to push to ECR:"; \
-		echo "  aws ecr get-login-password --region $(AWS_REGION) | docker login --username AWS --password-stdin $(AWS_ACCOUNT_ID).dkr.ecr.$(AWS_REGION).amazonaws.com"; \
+		echo "  aws ecr get-login-password --region $(AWS_REGION) | $(DOCKER) login --username AWS --password-stdin $(AWS_ACCOUNT_ID).dkr.ecr.$(AWS_REGION).amazonaws.com"; \
 		echo "  docker push $(ECR_IMAGE)"; \
 	fi
 ifeq ($(BACKEND_DEPLOY_TARGET),lambda)

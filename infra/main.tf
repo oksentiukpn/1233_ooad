@@ -46,12 +46,12 @@ resource "aws_ecr_lifecycle_policy" "backend_cleanup" {
 }
 
 # ==============================================================================
-# 2. RDS PostgreSQL 16 (db.t4g.micro, Single-AZ, Free Tier: 20GB gp3)
+# 2. Aurora Serverless v2 PostgreSQL (0–1 ACU, pauses after 5 idle minutes)
 # ==============================================================================
 resource "aws_db_subnet_group" "rds" {
   name        = "${var.project_name}-rds-subnets"
   subnet_ids  = data.aws_subnets.default.ids
-  description = "Subnet group for Spry RDS PostgreSQL"
+  description = "Subnet group for Spry Aurora PostgreSQL"
 }
 
 resource "aws_security_group" "lambda" {
@@ -102,27 +102,47 @@ resource "aws_security_group" "rds" {
   }
 }
 
-resource "aws_db_instance" "postgres" {
-  identifier                 = "${var.project_name}-postgres"
-  engine                     = "postgres"
-  engine_version             = "16.9"
-  instance_class             = var.db_instance_class
-  allocated_storage          = 20
-  max_allocated_storage      = 20 # Prevents auto-scaling beyond free tier
-  storage_type               = "gp3"
-  db_name                    = var.project_name
-  username                   = var.db_username
-  password                   = var.db_password
-  db_subnet_group_name       = aws_db_subnet_group.rds.name
-  vpc_security_group_ids     = [aws_security_group.rds.id]
-  publicly_accessible        = true
-  skip_final_snapshot        = true
-  backup_retention_period    = 0 # No automated snapshot storage charges
-  deletion_protection        = false
-  auto_minor_version_upgrade = true
+resource "aws_rds_cluster" "aurora" {
+  cluster_identifier     = "${var.project_name}-aurora"
+  engine                 = "aurora-postgresql"
+  engine_version         = "16.9"
+  engine_mode            = "provisioned"
+  database_name          = var.project_name
+  master_username        = var.db_username
+  master_password        = var.db_password
+  db_subnet_group_name   = aws_db_subnet_group.rds.name
+  vpc_security_group_ids = [aws_security_group.rds.id]
+  skip_final_snapshot    = true
+  deletion_protection    = false
+
+  serverlessv2_scaling_configuration {
+    min_capacity             = var.aurora_min_capacity
+    max_capacity             = var.aurora_max_capacity
+    seconds_until_auto_pause = var.aurora_auto_pause_seconds
+  }
 
   lifecycle {
-    ignore_changes = [password]
+    ignore_changes = [master_password]
+  }
+
+  tags = {
+    Name    = "${var.project_name}-aurora"
+    Project = var.project_name
+  }
+}
+
+resource "aws_rds_cluster_instance" "aurora_instance" {
+  cluster_identifier   = aws_rds_cluster.aurora.id
+  identifier           = "${var.project_name}-aurora-instance-1"
+  instance_class       = "db.serverless"
+  engine               = aws_rds_cluster.aurora.engine
+  engine_version       = aws_rds_cluster.aurora.engine_version
+  db_subnet_group_name = aws_db_subnet_group.rds.name
+  publicly_accessible  = true
+
+  tags = {
+    Name    = "${var.project_name}-aurora-instance"
+    Project = var.project_name
   }
 }
 
@@ -177,7 +197,7 @@ resource "aws_lambda_function" "backend" {
 
   environment {
     variables = {
-      DATABASE_URL        = "postgresql+psycopg://${var.db_username}:${var.db_password}@${aws_db_instance.postgres.endpoint}/${var.project_name}?sslmode=require"
+      DATABASE_URL        = "postgresql+psycopg://${var.db_username}:${var.db_password}@${aws_rds_cluster.aurora.endpoint}:${aws_rds_cluster.aurora.port}/${var.project_name}?sslmode=require"
       CORS_ORIGINS        = jsonencode(["*"])
       PORT                = tostring(var.app_port)
       OAUTH_CLIENT_ID     = var.oauth_client_id
@@ -189,7 +209,7 @@ resource "aws_lambda_function" "backend" {
   depends_on = [
     aws_iam_role_policy_attachment.lambda_basic,
     aws_iam_role_policy_attachment.lambda_vpc,
-    aws_db_instance.postgres
+    aws_rds_cluster_instance.aurora_instance
   ]
 
   tags = {
@@ -234,7 +254,7 @@ resource "aws_lambda_permission" "backend_url_invoke" {
 # 4. Frontend Hosting (S3 + CloudFront CDN with SPA Routing)
 # ==============================================================================
 resource "aws_s3_bucket" "frontend" {
-  bucket        = "${var.project_name}-frontend-${data.aws_caller_identity.current.account_id}"
+  bucket        = "${var.project_name}-frontend-${data.aws_caller_identity.current.account_id}-${var.aws_region}"
   force_destroy = true
 }
 

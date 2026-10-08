@@ -4,18 +4,18 @@ output "ecr_repository_url" {
 }
 
 output "rds_endpoint" {
-  description = "PostgreSQL RDS connection endpoint"
-  value       = aws_db_instance.postgres.endpoint
+  description = "PostgreSQL Aurora connection endpoint"
+  value       = "${aws_rds_cluster.aurora.endpoint}:${aws_rds_cluster.aurora.port}"
 }
 
 output "rds_address" {
-  description = "PostgreSQL host address"
-  value       = aws_db_instance.postgres.address
+  description = "PostgreSQL Aurora host address"
+  value       = aws_rds_cluster.aurora.endpoint
 }
 
 output "database_url" {
   description = "Full SQLAlchemy Database URL for Alembic and application"
-  value       = "postgresql+psycopg://${var.db_username}:${var.db_password}@${aws_db_instance.postgres.endpoint}/${var.project_name}?sslmode=require"
+  value       = "postgresql+psycopg://${var.db_username}:${var.db_password}@${aws_rds_cluster.aurora.endpoint}:${aws_rds_cluster.aurora.port}/${var.project_name}?sslmode=require"
   sensitive   = true
 }
 

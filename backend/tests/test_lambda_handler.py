@@ -17,7 +17,7 @@ def test_lambda_handler_http_request():
         "routeKey": "GET /",
         "rawPath": "/",
         "rawQueryString": "",
-        "headers": {"host": "test.lambda-url.eu-central-1.on.aws"},
+        "headers": {"host": "test.lambda-url.us-east-1.on.aws"},
         "requestContext": {
             "http": {
                 "method": "GET",

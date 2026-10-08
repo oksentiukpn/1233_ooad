@@ -1,7 +1,7 @@
 variable "aws_region" {
-  description = "AWS Region (eu-central-1 Frankfurt per architecture.md)"
+  description = "AWS Region (us-east-1 N. Virginia per architecture-migration.md)"
   type        = string
-  default     = "eu-central-1"
+  default     = "us-east-1"
 }
 
 variable "project_name" {
@@ -24,9 +24,27 @@ variable "db_password" {
 }
 
 variable "db_instance_class" {
-  description = "RDS DB Instance class (db.t4g.micro for AWS Free Tier / minimal cost)"
+  description = "Legacy RDS DB Instance class (kept for backward compatibility)"
   type        = string
   default     = "db.t4g.micro"
+}
+
+variable "aurora_min_capacity" {
+  description = "Aurora Serverless v2 min ACU (0 means auto-paused when idle)"
+  type        = number
+  default     = 0
+}
+
+variable "aurora_max_capacity" {
+  description = "Aurora Serverless v2 max ACU"
+  type        = number
+  default     = 1.0
+}
+
+variable "aurora_auto_pause_seconds" {
+  description = "Seconds of inactivity before Aurora Serverless v2 automatically pauses"
+  type        = number
+  default     = 300
 }
 
 variable "app_port" {
