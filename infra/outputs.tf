@@ -48,3 +48,23 @@ output "cloudfront_domain_name" {
   description = "CloudFront HTTPS distribution URL"
   value       = length(aws_cloudfront_distribution.frontend) > 0 ? "https://${aws_cloudfront_distribution.frontend[0].domain_name}" : "CloudFront not enabled"
 }
+
+output "cognito_user_pool_id" {
+  description = "Cognito User Pool ID"
+  value       = aws_cognito_user_pool.pool.id
+}
+
+output "cognito_user_pool_client_id" {
+  description = "Cognito User Pool App Client ID"
+  value       = aws_cognito_user_pool_client.client.id
+}
+
+output "cognito_domain" {
+  description = "Cognito Domain Name"
+  value       = "https://${aws_cognito_user_pool_domain.domain.domain}.auth.${var.aws_region}.amazoncognito.com"
+}
+
+output "cognito_login_url" {
+  description = "Cognito Hosted UI Login URL"
+  value       = "https://${aws_cognito_user_pool_domain.domain.domain}.auth.${var.aws_region}.amazoncognito.com/login?client_id=${aws_cognito_user_pool_client.client.id}&response_type=code&scope=email+openid+profile&redirect_uri=https://1233.pp.ua/auth/callback/"
+}

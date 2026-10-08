@@ -212,6 +212,10 @@ resource "aws_lambda_function" "backend" {
     aws_rds_cluster_instance.aurora_instance
   ]
 
+  lifecycle {
+    ignore_changes = [image_uri]
+  }
+
   tags = {
     Name    = "${var.project_name}-backend"
     Project = var.project_name

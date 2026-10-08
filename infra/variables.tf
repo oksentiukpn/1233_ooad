@@ -102,3 +102,9 @@ variable "resend_api_key" {
   sensitive   = true
   default     = ""
 }
+
+variable "cognito_domain_prefix" {
+  description = "Cognito User Pool Domain Prefix in us-east-1"
+  type        = string
+  default     = "spry-1233"
+}
