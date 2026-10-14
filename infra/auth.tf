@@ -41,6 +41,10 @@ resource "aws_cognito_identity_provider" "google" {
     email          = "email"
     email_verified = "email_verified"
   }
+
+  lifecycle {
+    ignore_changes = [provider_details]
+  }
 }
 
 resource "aws_cognito_user_pool_client" "client" {

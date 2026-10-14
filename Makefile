@@ -282,6 +282,33 @@ deploy-aws:
 # ------------------------------------------------------------------------------
 # Cleanup
 # ------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
+# Lab 5: Event-Driven Reports Targets
+# ------------------------------------------------------------------------------
+REPORT_QUEUE_NAME      ?= spry-report-requests
+REPORTS_BUCKET         ?= spry-reports-$(AWS_ACCOUNT_ID)
+
+report-now:
+	@WEEK_VAL="$(WEEK)"; \
+	if [ -z "$$WEEK_VAL" ]; then \
+		WEEK_ARG="null"; \
+	else \
+		WEEK_ARG="\"$$WEEK_VAL\""; \
+	fi; \
+	QUEUE_URL=$$(aws sqs get-queue-url --queue-name $(REPORT_QUEUE_NAME) --region $(AWS_REGION) --query "QueueUrl" --output text 2>/dev/null); \
+	if [ -z "$$QUEUE_URL" ]; then \
+		echo "Error: Queue $(REPORT_QUEUE_NAME) not found in $(AWS_REGION)"; exit 1; \
+	fi; \
+	echo "--> Sending report request to $$QUEUE_URL (Week: $$WEEK_ARG)..."; \
+	aws sqs send-message \
+		--queue-url "$$QUEUE_URL" \
+		--message-body "{\"week\": $$WEEK_ARG, \"source\": \"manual\"}" \
+		--region $(AWS_REGION)
+
+reports-list:
+	@echo "--> Listing reports in s3://$(REPORTS_BUCKET)/reports/..."
+	@aws s3 ls s3://$(REPORTS_BUCKET)/reports/ --recursive
+
 clean:
 	@echo "--> Cleaning build artifacts and caches..."
 	@rm -rf frontend/dist frontend/node_modules/.vite
