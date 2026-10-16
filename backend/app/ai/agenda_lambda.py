@@ -16,10 +16,10 @@ from app.core.security import verify_cognito_token
 logger = logging.getLogger("agenda-lambda")
 logger.setLevel(logging.INFO)
 
-CORS_HEADERS = {
-    "Access-Control-Allow-Origin": "*",
-    "Access-Control-Allow-Headers": "Content-Type,Authorization",
-    "Access-Control-Allow-Methods": "POST,OPTIONS",
+# Notice: AWS Lambda Function URL has built-in CORS configuration in Terraform.
+# Do NOT return duplicate Access-Control-Allow-Origin headers here, as duplicate
+# CORS headers cause browsers (Firefox/Chrome) to block requests with NetworkError.
+RESPONSE_HEADERS = {
     "Content-Type": "application/json",
 }
 
@@ -49,7 +49,7 @@ def handler(event: Dict[str, Any], context: Any = None) -> Dict[str, Any]:
     - Checks input text length <= 10,000 chars (413 if exceeded).
     - Structured JSON logging: user, model, prompt_version, tokens, cost.
     """
-    # 1. Handle HTTP OPTIONS preflight
+    # 1. Handle HTTP OPTIONS preflight if forwarded
     http_method = event.get("requestContext", {}).get("http", {}).get("method")
     if not http_method:
         http_method = event.get("httpMethod", "POST")
@@ -57,7 +57,7 @@ def handler(event: Dict[str, Any], context: Any = None) -> Dict[str, Any]:
     if http_method.upper() == "OPTIONS":
         return {
             "statusCode": 204,
-            "headers": CORS_HEADERS,
+            "headers": RESPONSE_HEADERS,
             "body": "",
         }
 
@@ -69,7 +69,7 @@ def handler(event: Dict[str, Any], context: Any = None) -> Dict[str, Any]:
         logger.warning("Unauthorized request: missing Authorization header")
         return {
             "statusCode": 401,
-            "headers": CORS_HEADERS,
+            "headers": RESPONSE_HEADERS,
             "body": json.dumps({"detail": "Missing bearer token"}),
         }
 
@@ -80,7 +80,7 @@ def handler(event: Dict[str, Any], context: Any = None) -> Dict[str, Any]:
         logger.warning(f"Unauthorized request: invalid Cognito token: {e}")
         return {
             "statusCode": 401,
-            "headers": CORS_HEADERS,
+            "headers": RESPONSE_HEADERS,
             "body": json.dumps({"detail": f"Unauthorized: {str(e)}"}),
         }
 
@@ -96,7 +96,7 @@ def handler(event: Dict[str, Any], context: Any = None) -> Dict[str, Any]:
     except Exception as e:
         return {
             "statusCode": 400,
-            "headers": CORS_HEADERS,
+            "headers": RESPONSE_HEADERS,
             "body": json.dumps({"detail": f"Invalid JSON body: {str(e)}"}),
         }
 
@@ -104,20 +104,20 @@ def handler(event: Dict[str, Any], context: Any = None) -> Dict[str, Any]:
     if not text or not str(text).strip():
         return {
             "statusCode": 422,
-            "headers": CORS_HEADERS,
-            "body": json.dumps(
-                {"detail": "The 'text' field is required and cannot be empty."}
-            ),
+            "headers": RESPONSE_HEADERS,
+            "body": json.dumps({
+                "detail": "The 'text' field is required and cannot be empty."
+            }),
         }
 
     # 4. Enforce input length quota before calling LLM
     if len(text) > 10_000:
         return {
             "statusCode": 413,
-            "headers": CORS_HEADERS,
-            "body": json.dumps(
-                {"detail": "Text exceeds maximum allowed length of 10,000 characters."}
-            ),
+            "headers": RESPONSE_HEADERS,
+            "body": json.dumps({
+                "detail": "Text exceeds maximum allowed length of 10,000 characters."
+            }),
         }
 
     # 5. Extract today and tz (defaults to current date and Europe/Kyiv)
@@ -144,17 +144,17 @@ def handler(event: Dict[str, Any], context: Any = None) -> Dict[str, Any]:
         logger.warning(f"AgendaParseError for user {user_sub}: {err}")
         return {
             "statusCode": 422,
-            "headers": CORS_HEADERS,
+            "headers": RESPONSE_HEADERS,
             "body": json.dumps({"detail": str(err)}),
         }
     except Exception as err:
         logger.error(f"Internal error invoking Bedrock parser: {err}", exc_info=True)
         return {
             "statusCode": 500,
-            "headers": CORS_HEADERS,
-            "body": json.dumps(
-                {"detail": f"Failed to parse agenda with LLM: {str(err)}"}
-            ),
+            "headers": RESPONSE_HEADERS,
+            "body": json.dumps({
+                "detail": f"Failed to parse agenda with LLM: {str(err)}"
+            }),
         }
 
     latency_ms = int((time.monotonic() - started) * 1000)
@@ -176,15 +176,13 @@ def handler(event: Dict[str, Any], context: Any = None) -> Dict[str, Any]:
     # 8. Return 200 with suggested agenda
     return {
         "statusCode": 200,
-        "headers": CORS_HEADERS,
-        "body": json.dumps(
-            {
-                "agenda": agenda.model_dump(mode="json"),
-                "model": active_model,
-                "prompt_version": PROMPT_VERSION,
-                "usage": usage,
-                "latency_ms": latency_ms,
-                "cost_usd": calculated_cost,
-            }
-        ),
+        "headers": RESPONSE_HEADERS,
+        "body": json.dumps({
+            "agenda": agenda.model_dump(mode="json"),
+            "model": active_model,
+            "prompt_version": PROMPT_VERSION,
+            "usage": usage,
+            "latency_ms": latency_ms,
+            "cost_usd": calculated_cost,
+        }),
     }

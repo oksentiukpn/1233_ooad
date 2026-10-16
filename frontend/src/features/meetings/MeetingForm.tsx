@@ -1,5 +1,6 @@
 import React, { useState, useRef } from "react";
 import { createMeeting, parseAgendaText } from "@/lib/api";
+import { getAccessToken } from "@/lib/authApi";
 import { Meeting } from "@/types/meeting";
 import {
   CheckCircle2,
@@ -61,6 +62,14 @@ export function MeetingForm({ onMeetingCreated }: MeetingFormProps) {
 
     if (pasteText.length > 10000) {
       setParseError("Текст перевищує ліміт у 10,000 символів.");
+      return;
+    }
+
+    const token = getAccessToken();
+    if (!token) {
+      setParseError(
+        "Потрібна авторизація. Будь ласка, увійдіть у систему (кнопка «Увійти» / Sign In у верхній панелі), щоб скористатися ШІ-парсером."
+      );
       return;
     }
 
@@ -150,9 +159,20 @@ export function MeetingForm({ onMeetingCreated }: MeetingFormProps) {
       if (err instanceof Error) {
         if (err.name === "AbortError") {
           setParseError("Обробку тексту скасовано користувачем.");
-        } else if (err.message.includes("401")) {
+        } else if (
+          err.message.includes("401") ||
+          err.message.includes("Unauthorized") ||
+          err.message.includes("bearer token")
+        ) {
           setParseError(
-            "Потрібна авторизація (HTTP 401). Будь ласка, увійдіть у систему."
+            "Потрібна авторизація (HTTP 401). Будь ласка, увійдіть у систему за допомогою кнопки «Увійти»."
+          );
+        } else if (
+          err.message.includes("NetworkError") ||
+          err.message.includes("Failed to fetch")
+        ) {
+          setParseError(
+            "Помилка мережі при зверненні до ШІ-сервісу. Будь ласка, перевірте, чи ви увійшли в систему (кнопка «Увійти»)."
           );
         } else {
           setParseError(err.message);
@@ -259,7 +279,7 @@ export function MeetingForm({ onMeetingCreated }: MeetingFormProps) {
         <div className="flex items-center gap-2 mb-2 text-[#0e317e] dark:text-blue-300 font-bold text-xs sm:text-sm uppercase tracking-wide">
           <Sparkles className="h-4 w-4 text-[#184dbd] dark:text-blue-400" />
           <span>
-            Швидке заповнення: Вставити порядок денний (Paste an agenda with AI)
+            ШВИДКЕ ЗАПОВНЕННЯ: ВСТАВИТИ ПОРЯДОК ДЕННИЙ (PASTE AN AGENDA WITH AI)
           </span>
         </div>
         <p className="text-xs text-neutral-600 dark:text-neutral-400 mb-3 font-rada-serif">

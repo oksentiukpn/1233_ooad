@@ -12,7 +12,7 @@ def test_handler_options_preflight():
     }
     resp = handler(event)
     assert resp["statusCode"] == 204
-    assert resp["headers"]["Access-Control-Allow-Methods"] == "POST,OPTIONS"
+    assert resp["headers"]["Content-Type"] == "application/json"
 
 
 def test_handler_missing_auth():
