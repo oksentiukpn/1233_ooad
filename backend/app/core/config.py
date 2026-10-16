@@ -40,6 +40,11 @@ class Settings(BaseSettings):
     RESEND_API_KEY: str = ""
     RESEND_FROM_EMAIL: str = "Spry <onboarding@resend.dev>"
 
+    # AI Agenda Parser configuration (Amazon Bedrock)
+    PARSER_MODEL: str = "qwen.qwen3-32b-v1:0"
+    PARSER_REGION: str = "us-east-1"
+    PARSER_EFFORT: str = "low"
+
     @property
     def effective_google_client_id(self) -> str:
         return self.GOOGLE_CLIENT_ID or self.OAUTH_CLIENT_ID

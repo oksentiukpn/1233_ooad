@@ -283,6 +283,17 @@ deploy-aws:
 # Cleanup
 # ------------------------------------------------------------------------------
 # ------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
+# Lab 6: AI Agenda Parser Targets (Amazon Bedrock)
+# ------------------------------------------------------------------------------
+PARSER_MODEL           ?= qwen.qwen3-32b-v1:0
+
+llm-hello:
+	@$(PYTHON) scripts/llm_hello.py "$(PARSER_MODEL)" "$(AWS_REGION)"
+
+parse:
+	@PYTHONPATH=backend $(PYTHON) scripts/parse_cli.py "$(TEXT)" "$(PARSER_MODEL)"
+
 # Lab 5: Event-Driven Reports Targets
 # ------------------------------------------------------------------------------
 REPORT_QUEUE_NAME      ?= spry-report-requests
