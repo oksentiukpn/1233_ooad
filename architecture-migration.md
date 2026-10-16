@@ -203,3 +203,26 @@ subscription.
    and the custom domain instead of `*`.
 4. **Hardening:** move the database password from a Lambda environment variable
    to SSM Parameter Store or Secrets Manager.
+
+## Stage 6 — AI-Assisted Agenda Parsing (Lab 6)
+
+In Lab 6, we introduced **Paste an agenda** backed by **Amazon Bedrock**:
+
+```mermaid
+flowchart TD
+    Browser["User Browser (React SPA on Cloudflare Pages)"]
+    ParserLambda["Lambda: spry-agenda-parser (Outside VPC, $0 idle)"]
+    Bedrock["Amazon Bedrock (mistral.ministral-3-14b-instruct)"]
+    BackendLambda["Lambda: spry-backend (In VPC, FastAPI)"]
+    Aurora["Aurora PostgreSQL (JSONB ai_suggestion)"]
+
+    Browser -- "1. POST raw text + JWT to Function URL" --> ParserLambda
+    ParserLambda -- "2. Bedrock Converse toolCall" --> Bedrock
+    Bedrock -- "3. Extracted JSON" --> ParserLambda
+    ParserLambda -- "4. Parsed agenda with AI Suggestion" --> Browser
+    Browser -- "5. User edits / approves & saves via API" --> BackendLambda
+    BackendLambda -- "6. Writes agenda + ai_suggestion" --> Aurora
+```
+
+- **Separation of Concerns**: The parser function runs outside the VPC to access Bedrock with zero VPC endpoint cost.
+- **Safety**: The model never writes to the database. All writes pass through the standard validated API.
