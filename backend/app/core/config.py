@@ -41,7 +41,7 @@ class Settings(BaseSettings):
     RESEND_FROM_EMAIL: str = "Spry <onboarding@resend.dev>"
 
     # AI Agenda Parser configuration (Amazon Bedrock)
-    PARSER_MODEL: str = "qwen.qwen3-32b-v1:0"
+    PARSER_MODEL: str = "mistral.ministral-3-14b-instruct"
     PARSER_REGION: str = "us-east-1"
     PARSER_EFFORT: str = "low"
 

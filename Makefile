@@ -286,7 +286,7 @@ deploy-aws:
 # ------------------------------------------------------------------------------
 # Lab 6: AI Agenda Parser Targets (Amazon Bedrock)
 # ------------------------------------------------------------------------------
-PARSER_MODEL           ?= qwen.qwen3-32b-v1:0
+PARSER_MODEL           ?= mistral.ministral-3-14b-instruct
 
 llm-hello:
 	@$(PYTHON) scripts/llm_hello.py "$(PARSER_MODEL)" "$(AWS_REGION)"

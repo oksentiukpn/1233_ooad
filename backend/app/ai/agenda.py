@@ -14,6 +14,11 @@ PROMPT_VERSION = "agenda-v1"
 # Price catalogue per 1,000,000 tokens ($/M)
 # Reflects AWS Bedrock pricing in us-east-1
 MODEL_PRICES: Dict[str, Dict[str, float]] = {
+    # Modern Mistral models
+    "mistral.ministral-3-14b-instruct": {"input": 0.10, "output": 0.30},
+    "mistral.ministral-3-8b-instruct": {"input": 0.08, "output": 0.24},
+    "mistral.devstral-2-123b": {"input": 0.30, "output": 0.90},
+    "mistral.mistral-large-3-675b-instruct": {"input": 1.00, "output": 3.00},
     # Ultra-cheap next-gen open weights on Bedrock
     "qwen.qwen3-32b-v1:0": {"input": 0.15, "output": 0.60},
     "deepseek.v3.2": {"input": 0.20, "output": 0.80},
