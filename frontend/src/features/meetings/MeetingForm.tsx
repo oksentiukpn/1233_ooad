@@ -53,7 +53,9 @@ export function MeetingForm({ onMeetingCreated }: MeetingFormProps) {
   const handleParseAgenda = async () => {
     setParseError(null);
     if (!pasteText.trim()) {
-      setParseError("Будь ласка, вставте текст порядку денного для обробки штучним інтелектом.");
+      setParseError(
+        "Будь ласка, вставте текст порядку денного для обробки штучним інтелектом."
+      );
       return;
     }
 
@@ -66,7 +68,10 @@ export function MeetingForm({ onMeetingCreated }: MeetingFormProps) {
     abortControllerRef.current = new AbortController();
 
     try {
-      const resp = await parseAgendaText(pasteText.trim(), abortControllerRef.current.signal);
+      const resp = await parseAgendaText(
+        pasteText.trim(),
+        abortControllerRef.current.signal
+      );
       const parsed = resp.agenda;
 
       setAiSuggestion({
@@ -146,7 +151,9 @@ export function MeetingForm({ onMeetingCreated }: MeetingFormProps) {
         if (err.name === "AbortError") {
           setParseError("Обробку тексту скасовано користувачем.");
         } else if (err.message.includes("401")) {
-          setParseError("Потрібна авторизація (HTTP 401). Будь ласка, увійдіть у систему.");
+          setParseError(
+            "Потрібна авторизація (HTTP 401). Будь ласка, увійдіть у систему."
+          );
         } else {
           setParseError(err.message);
         }
@@ -242,7 +249,8 @@ export function MeetingForm({ onMeetingCreated }: MeetingFormProps) {
           РОЗДІЛ I. РЕЄСТРАЦІЙНА КАРТКА ЗАСІДАННЯ
         </h2>
         <p className="font-rada-serif text-xs italic text-neutral-600 dark:text-neutral-400 mt-0.5">
-          Стаття 1. Порядок внесення нового пленарного засідання або наради до Єдиного державного реєстру
+          Стаття 1. Порядок внесення нового пленарного засідання або наради до Єдиного
+          державного реєстру
         </p>
       </div>
 
@@ -250,11 +258,14 @@ export function MeetingForm({ onMeetingCreated }: MeetingFormProps) {
       <div className="mb-6 bg-blue-50/60 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900 rounded p-4">
         <div className="flex items-center gap-2 mb-2 text-[#0e317e] dark:text-blue-300 font-bold text-xs sm:text-sm uppercase tracking-wide">
           <Sparkles className="h-4 w-4 text-[#184dbd] dark:text-blue-400" />
-          <span>Швидке заповнення: Вставити порядок денний (Paste an agenda with AI)</span>
+          <span>
+            Швидке заповнення: Вставити порядок денний (Paste an agenda with AI)
+          </span>
         </div>
         <p className="text-xs text-neutral-600 dark:text-neutral-400 mb-3 font-rada-serif">
-          Вставте довільний текст листа, повідомлення з чату або чорнових нотаток. Модель Mistral
-          через Amazon Bedrock автоматично витягне тему, час, тривалість, пункти та доручення.
+          Вставте довільний текст листа, повідомлення з чату або чорнових нотаток. Модель
+          Mistral через Amazon Bedrock автоматично витягне тему, час, тривалість, пункти
+          та доручення.
         </p>
 
         <textarea
