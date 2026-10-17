@@ -105,9 +105,9 @@ def handler(event: Dict[str, Any], context: Any = None) -> Dict[str, Any]:
         return {
             "statusCode": 422,
             "headers": RESPONSE_HEADERS,
-            "body": json.dumps({
-                "detail": "The 'text' field is required and cannot be empty."
-            }),
+            "body": json.dumps(
+                {"detail": "The 'text' field is required and cannot be empty."}
+            ),
         }
 
     # 4. Enforce input length quota before calling LLM
@@ -115,9 +115,9 @@ def handler(event: Dict[str, Any], context: Any = None) -> Dict[str, Any]:
         return {
             "statusCode": 413,
             "headers": RESPONSE_HEADERS,
-            "body": json.dumps({
-                "detail": "Text exceeds maximum allowed length of 10,000 characters."
-            }),
+            "body": json.dumps(
+                {"detail": "Text exceeds maximum allowed length of 10,000 characters."}
+            ),
         }
 
     # 5. Extract today and tz (defaults to current date and Europe/Kyiv)
@@ -152,9 +152,9 @@ def handler(event: Dict[str, Any], context: Any = None) -> Dict[str, Any]:
         return {
             "statusCode": 500,
             "headers": RESPONSE_HEADERS,
-            "body": json.dumps({
-                "detail": f"Failed to parse agenda with LLM: {str(err)}"
-            }),
+            "body": json.dumps(
+                {"detail": f"Failed to parse agenda with LLM: {str(err)}"}
+            ),
         }
 
     latency_ms = int((time.monotonic() - started) * 1000)
@@ -177,12 +177,14 @@ def handler(event: Dict[str, Any], context: Any = None) -> Dict[str, Any]:
     return {
         "statusCode": 200,
         "headers": RESPONSE_HEADERS,
-        "body": json.dumps({
-            "agenda": agenda.model_dump(mode="json"),
-            "model": active_model,
-            "prompt_version": PROMPT_VERSION,
-            "usage": usage,
-            "latency_ms": latency_ms,
-            "cost_usd": calculated_cost,
-        }),
+        "body": json.dumps(
+            {
+                "agenda": agenda.model_dump(mode="json"),
+                "model": active_model,
+                "prompt_version": PROMPT_VERSION,
+                "usage": usage,
+                "latency_ms": latency_ms,
+                "cost_usd": calculated_cost,
+            }
+        ),
     }
