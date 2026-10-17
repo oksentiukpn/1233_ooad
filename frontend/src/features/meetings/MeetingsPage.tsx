@@ -4,12 +4,12 @@ import { Meeting } from "@/types/meeting";
 import { fetchMeetings } from "@/lib/api";
 import { MeetingForm } from "./MeetingForm";
 import { MeetingList } from "./MeetingList";
-import { AlertTriangle, RefreshCw, FileText, CalendarDays } from "lucide-react";
+import { AlertTriangle, RefreshCw, Sparkles, ListFilter, Plus } from "lucide-react";
 
 interface MeetingsPageProps {
   searchQuery?: string;
-  activeTab: "registry" | "create" | "card" | "history";
-  setActiveTab: (tab: "registry" | "create" | "card" | "history") => void;
+  activeTab: "registry" | "create";
+  setActiveTab: (tab: "registry" | "create") => void;
 }
 
 export function MeetingsPage({
@@ -31,7 +31,7 @@ export function MeetingsPage({
       if (err instanceof Error) {
         if (err.message.includes("401")) {
           setError(
-            "Потрібна авторизація (HTTP 401). Будь ласка, увійдіть через кнопку «Увійти» у верхній панелі для доступу до даних."
+            "Потрібна авторизація (HTTP 401). Будь ласка, увійдіть через кнопку «Увійти» (Sign in) для перегляду засідань."
           );
         } else {
           setError(err.message);
@@ -54,9 +54,9 @@ export function MeetingsPage({
 
   const handleMeetingCreated = (newMeeting: Meeting) => {
     setMeetings((prev) => {
-      const updated = [...prev, newMeeting];
+      const updated = [newMeeting, ...prev.filter((m) => m.id !== newMeeting.id)];
       return updated.sort(
-        (a, b) => new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime()
+        (a, b) => new Date(b.starts_at).getTime() - new Date(a.starts_at).getTime()
       );
     });
     // Switch to registry tab after adding
@@ -70,44 +70,39 @@ export function MeetingsPage({
     return (
       m.title.toLowerCase().includes(q) ||
       m.id.toString().includes(q) ||
+      (m.agenda && m.agenda.toLowerCase().includes(q)) ||
       m.starts_at.includes(q)
     );
   });
 
   return (
-    <div className="max-w-[880px] mx-auto bg-white dark:bg-slate-900 border border-[#ced4da] dark:border-slate-800 shadow-sm p-6 sm:p-10 my-2">
-      {/* 1. DOCUMENT HEADING & STATE EMBLEM (EXACTLY AS IN Kонституція) */}
-      <div className="text-center pb-6 border-b border-neutral-300 dark:border-slate-700">
-        <div className="flex justify-center mb-3">
+    <div className="max-w-[960px] mx-auto bg-white dark:bg-slate-900 border border-[#ced4da] dark:border-slate-800 shadow-sm p-5 sm:p-8 rounded-lg my-3">
+      {/* 1. DOCUMENT HEADING & STATE EMBLEM (AUTHENTIC PARLIAMENTARY HEADER) */}
+      <div className="text-center pb-5 border-b border-neutral-300 dark:border-slate-700">
+        <div className="flex justify-center mb-2.5">
           <img
             src="/rada_assets/gerb_kQCl.gif"
             alt="Герб України"
-            className="h-20 w-auto object-contain"
+            className="h-16 sm:h-20 w-auto object-contain"
             title="Державний Герб України"
           />
         </div>
 
-        <h1 className="font-rada-serif text-2xl sm:text-3xl font-bold uppercase tracking-wider text-black dark:text-white mt-1 mb-1">
-          ПОРЯДОК ДЕННИЙ ТА РЕЄСТР ЗАСІДАНЬ
+        <h1 className="font-rada-serif text-xl sm:text-2xl font-bold uppercase tracking-wider text-black dark:text-white mt-1 mb-1">
+          ЄДИНИЙ ДЕРЖАВНИЙ РЕЄСТР ЗАСІДАНЬ ТА ПОРЯДКУ ДЕННОГО
         </h1>
-        <h2 className="font-rada-serif text-lg sm:text-xl font-bold uppercase tracking-wide text-neutral-800 dark:text-neutral-200 mb-2">
+        <h2 className="font-rada-serif text-base sm:text-lg font-bold uppercase tracking-wide text-neutral-800 dark:text-neutral-200 mb-1.5">
           ВЕРХОВНОЇ РАДИ УКРАЇНИ
         </h2>
 
-        <p className="font-rada-serif italic text-xs sm:text-sm text-neutral-600 dark:text-neutral-400">
-          (Відомості Верховної Ради України (ВВР), 2026, № 40, ст. 254)
+        <p className="font-rada-serif italic text-xs text-neutral-600 dark:text-neutral-400">
+          (Офіційний електронний протокол засідань • Інтегровано модуль ШІ Amazon Bedrock)
         </p>
-
-        <div className="mt-3 text-left font-rada-serif italic text-xs text-neutral-600 dark:text-neutral-400 bg-neutral-50 dark:bg-slate-800/60 p-3 border-l-2 border-[#184dbd] rounded-r">
-          &#123;Із змінами та доповненнями, внесеними згідно з Регламентом Верховної Ради
-          України, стандартами об'єктно-орієнтованого аналізу та проєктування (OOAD Module
-          1) та архітектурними вимогами єдиного монорепозиторію Spry&#125;
-        </div>
       </div>
 
       {/* Error Banner */}
       {error && (
-        <div className="my-4 p-4 rounded border border-red-300 bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300 text-xs sm:text-sm flex items-center justify-between gap-3">
+        <div className="my-4 p-4 rounded-lg border border-red-300 bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300 text-xs sm:text-sm flex items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <AlertTriangle className="h-5 w-5 shrink-0 text-red-600 dark:text-red-400" />
             <span>
@@ -117,7 +112,7 @@ export function MeetingsPage({
           <button
             type="button"
             onClick={loadMeetings}
-            className="px-2.5 py-1 text-xs font-semibold rounded border border-red-400 hover:bg-red-100 dark:hover:bg-red-900/50 flex items-center gap-1"
+            className="px-2.5 py-1 text-xs font-semibold rounded border border-red-400 hover:bg-red-100 dark:hover:bg-red-900/50 flex items-center gap-1 shrink-0"
           >
             <RefreshCw className="h-3.5 w-3.5" />
             Повторити
@@ -125,112 +120,96 @@ export function MeetingsPage({
         </div>
       )}
 
-      {/* 2. TAB CONTENT OR MAIN FLOW */}
-      {activeTab === "card" && (
-        <div className="my-6 p-5 border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 rounded">
-          <h3 className="font-rada-serif text-lg font-bold mb-3 flex items-center gap-2">
-            <FileText className="h-5 w-5 text-[#004bc1]" />
-            Картка реєстру засідань Верховної Ради України
-          </h3>
-          <div className="text-xs sm:text-sm font-rada-serif space-y-2 text-slate-700 dark:text-slate-300 leading-relaxed">
-            <p>
-              <strong>Вид акта:</strong> Електронний реєстр та регламентний протокол
-              засідань
-            </p>
-            <p>
-              <strong>Суб'єкт внесення:</strong> Секретаріат Верховної Ради України /
-              Система Spry
-            </p>
-            <p>
-              <strong>Статус:</strong> Офіційний, діючий, відкритий доступ
-            </p>
-            <p>
-              <strong>Технічна основа:</strong> FastAPI (Python 3.12) &bull; PostgreSQL 16
-              &bull; React (Vite, TypeScript, Tailwind CSS)
-            </p>
-            <p>
-              <strong>Усього записів у базі даних:</strong> {meetings.length} засідань
-            </p>
-          </div>
-          <div className="mt-4">
-            <button
-              type="button"
-              onClick={() => setActiveTab("registry")}
-              className="text-xs font-semibold text-[#004bc1] hover:underline"
-            >
-              &larr; Повернутися до переліку засідань
-            </button>
-          </div>
-        </div>
-      )}
-
-      {activeTab === "history" && (
-        <div className="my-6 p-5 border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 rounded">
-          <h3 className="font-rada-serif text-lg font-bold mb-3 flex items-center gap-2">
-            <CalendarDays className="h-5 w-5 text-[#004bc1]" />
-            Історія змін та редакцій реєстру
-          </h3>
-          <ul className="text-xs sm:text-sm font-rada-serif space-y-2 text-slate-700 dark:text-slate-300 list-disc list-inside">
-            <li>
-              <strong>01.10.2026</strong> — Запровадження першого вертикального зрізу Spry
-              Monorepo (GET/POST /api/meetings).
-            </li>
-            <li>
-              <strong>01.01.2020</strong> — Внесення попередніх регламентних поправок.
-            </li>
-            <li>
-              <strong>28.06.1996</strong> — Прийняття Конституції України Верховною Радою
-              України.
-            </li>
-          </ul>
-          <div className="mt-4">
-            <button
-              type="button"
-              onClick={() => setActiveTab("registry")}
-              className="text-xs font-semibold text-[#004bc1] hover:underline"
-            >
-              &larr; Повернутися до реєстру засідань
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Section I: Registration Form */}
-      <section id="create-meeting-section" className="my-6">
-        <MeetingForm onMeetingCreated={handleMeetingCreated} />
-      </section>
-
-      {/* Section II: Meeting Registry List */}
-      <section id="meetings-list-section" className="my-8">
-        <div className="flex items-center justify-between border-b-2 border-neutral-800 dark:border-neutral-200 pb-2 mb-4">
-          <div>
-            <h2 className="font-rada-serif text-lg sm:text-xl font-bold uppercase tracking-wide text-black dark:text-white">
-              РОЗДІЛ II. ПЕРЕЛІК ТА ПРОТОКОЛИ ЗАРЕЄСТРОВАНИХ ЗАСІДАНЬ
-            </h2>
-            <div className="font-rada-serif text-xs italic text-neutral-600 dark:text-neutral-400">
-              Стаття 2. Офіційний хронологічний перелік пленарних засідань та нарад
-            </div>
-          </div>
+      {/* Mode Switching Tabs */}
+      <div className="flex items-center justify-between border-b border-neutral-200 dark:border-slate-700 mt-5 mb-6">
+        <div className="flex items-center gap-2">
           <button
             type="button"
-            onClick={loadMeetings}
-            disabled={isLoading}
-            title="Оновити дані"
-            className="p-1.5 rounded hover:bg-neutral-100 dark:hover:bg-slate-800 text-neutral-600 dark:text-neutral-300 transition-colors"
+            onClick={() => setActiveTab("registry")}
+            className={`px-4 py-2 font-bold text-xs sm:text-sm border-b-2 transition-colors flex items-center gap-2 ${
+              activeTab === "registry"
+                ? "border-[#0e317e] text-[#0e317e] dark:border-blue-400 dark:text-blue-400"
+                : "border-transparent text-neutral-600 dark:text-neutral-400 hover:text-black dark:hover:text-white"
+            }`}
           >
-            <RefreshCw className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`} />
+            <ListFilter className="h-4 w-4" />
+            <span>Реєстр засідань</span>
+            <span className="text-[11px] px-1.5 py-0.2 bg-neutral-200 dark:bg-slate-700 rounded-full font-sans">
+              {meetings.length}
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab("create")}
+            className={`px-4 py-2 font-bold text-xs sm:text-sm border-b-2 transition-colors flex items-center gap-2 ${
+              activeTab === "create"
+                ? "border-[#0e317e] text-[#0e317e] dark:border-blue-400 dark:text-blue-400"
+                : "border-transparent text-neutral-600 dark:text-neutral-400 hover:text-black dark:hover:text-white"
+            }`}
+          >
+            <Sparkles className="h-4 w-4 text-[#184dbd] dark:text-blue-400" />
+            <span>+ Зареєструвати засідання</span>
           </button>
         </div>
 
-        {searchQuery.trim() && (
-          <div className="mb-4 text-xs font-medium text-neutral-600 dark:text-neutral-400 bg-blue-50 dark:bg-blue-950/40 p-2.5 rounded border border-blue-200 dark:border-blue-800">
-            Результати пошуку за запитом: <b>«{searchQuery}»</b> (знайдено:{" "}
-            {filteredMeetings.length})
+        {activeTab === "registry" && (
+          <div className="flex items-center gap-2 pb-1">
+            <button
+              type="button"
+              onClick={loadMeetings}
+              disabled={isLoading}
+              title="Оновити дані"
+              className="p-1.5 rounded hover:bg-neutral-100 dark:hover:bg-slate-800 text-neutral-600 dark:text-neutral-300 transition-colors"
+            >
+              <RefreshCw className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`} />
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab("create")}
+              className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#0e317e] hover:bg-[#184dbd] text-white text-xs font-semibold rounded shadow-sm transition-colors"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              <span>Додати засідання</span>
+            </button>
           </div>
         )}
+      </div>
 
-        <MeetingList meetings={filteredMeetings} isLoading={isLoading} />
-      </section>
+      {/* 2. TAB CONTENT: REGISTRY OR CREATE FORM */}
+      {activeTab === "create" ? (
+        <section id="create-meeting-section">
+          <MeetingForm
+            onMeetingCreated={handleMeetingCreated}
+            onCancel={() => setActiveTab("registry")}
+          />
+        </section>
+      ) : (
+        <section id="meetings-list-section">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
+            <div>
+              <h2 className="font-rada-serif text-base sm:text-lg font-bold uppercase tracking-wide text-black dark:text-white">
+                РОЗДІЛ II. ПЕРЕЛІК ТА ПРОТОКОЛИ ЗАРЕЄСТРОВАНИХ ЗАСІДАНЬ
+              </h2>
+              <div className="font-rada-serif text-xs italic text-neutral-600 dark:text-neutral-400">
+                Стаття 2. Офіційний хронологічний перелік пленарних засідань та нарад
+              </div>
+            </div>
+
+            {searchQuery.trim() && (
+              <div className="text-xs font-medium text-neutral-700 dark:text-neutral-300 bg-blue-50 dark:bg-blue-950/40 px-3 py-1.5 rounded border border-blue-200 dark:border-blue-800">
+                Знайдено: <b>{filteredMeetings.length}</b> за запитом «{searchQuery}»
+              </div>
+            )}
+          </div>
+
+          <MeetingList
+            meetings={filteredMeetings}
+            isLoading={isLoading}
+            onAddNewClick={() => setActiveTab("create")}
+          />
+        </section>
+      )}
     </div>
   );
 }

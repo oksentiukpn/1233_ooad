@@ -1,4 +1,5 @@
 import React, { useState, useRef } from "react";
+import { useAuth } from "react-oidc-context";
 import { createMeeting, parseAgendaText } from "@/lib/api";
 import { getAccessToken } from "@/lib/authApi";
 import { Meeting } from "@/types/meeting";
@@ -11,13 +12,23 @@ import {
   XCircle,
   Clock,
   ListTodo,
+  FileText,
+  RotateCcw,
+  ArrowLeft,
+  LogIn,
 } from "lucide-react";
 
 interface MeetingFormProps {
   onMeetingCreated: (meeting: Meeting) => void;
+  onCancel?: () => void;
 }
 
-export function MeetingForm({ onMeetingCreated }: MeetingFormProps) {
+const SAMPLE_AGENDA =
+  "Пн 10:00, синк по прайсингу, 45 хв. 1) нові тарифи Pro — Олена, 15 хв 2) фідбек від клієнтів — Taras 3) що робимо з річною знижкою. Taras до п'ятниці збирає порівняння з конкурентами.";
+
+export function MeetingForm({ onMeetingCreated, onCancel }: MeetingFormProps) {
+  const auth = useAuth();
+
   // Form fields
   const [title, setTitle] = useState("");
   const [startsAt, setStartsAt] = useState("");
@@ -26,7 +37,18 @@ export function MeetingForm({ onMeetingCreated }: MeetingFormProps) {
   const [agenda, setAgenda] = useState("");
 
   // AI Suggestion metadata and dirty tracking
-  const [aiSuggestion, setAiSuggestion] = useState<Record<string, unknown> | null>(null);
+  const [aiSuggestion, setAiSuggestion] = useState<{
+    parsed_agenda?: unknown;
+    model?: string;
+    prompt_version?: string;
+    usage?: {
+      input_tokens: number;
+      output_tokens: number;
+    };
+    latency_ms?: number;
+    cost_usd?: number;
+  } | null>(null);
+
   const [isSuggested, setIsSuggested] = useState<{
     title: boolean;
     startsAt: boolean;
@@ -55,7 +77,7 @@ export function MeetingForm({ onMeetingCreated }: MeetingFormProps) {
     setParseError(null);
     if (!pasteText.trim()) {
       setParseError(
-        "Будь ласка, вставте текст порядку денного для обробки штучним інтелектом."
+        "Будь ласка, вставте текст порядку денного або чернетки для обробки штучним інтелектом."
       );
       return;
     }
@@ -68,7 +90,7 @@ export function MeetingForm({ onMeetingCreated }: MeetingFormProps) {
     const token = getAccessToken();
     if (!token) {
       setParseError(
-        "Потрібна авторизація. Будь ласка, увійдіть у систему (кнопка «Увійти» / Sign In у верхній панелі), щоб скористатися ШІ-парсером."
+        "Для використання ШІ-парсера потрібна авторизація. Будь ласка, натисніть «Увійти» (Sign in) у верхній панелі."
       );
       return;
     }
@@ -172,7 +194,7 @@ export function MeetingForm({ onMeetingCreated }: MeetingFormProps) {
           err.message.includes("Failed to fetch")
         ) {
           setParseError(
-            "Помилка мережі при зверненні до ШІ-сервісу. Будь ласка, перевірте, чи ви увійшли в систему (кнопка «Увійти»)."
+            "Помилка зв'язку з ШІ-сервісом. Перевірте, чи ви увійшли в систему (кнопка «Увійти»)."
           );
         } else {
           setParseError(err.message);
@@ -190,6 +212,19 @@ export function MeetingForm({ onMeetingCreated }: MeetingFormProps) {
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
     }
+  };
+
+  const handleResetForm = () => {
+    setTitle("");
+    setStartsAt("");
+    setEndsAt("");
+    setAttendeeCount(450);
+    setAgenda("");
+    setPasteText("");
+    setAiSuggestion(null);
+    setIsSuggested({ title: false, startsAt: false, endsAt: false, agenda: false });
+    setError(null);
+    setParseError(null);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -228,7 +263,9 @@ export function MeetingForm({ onMeetingCreated }: MeetingFormProps) {
         ends_at: endDate.toISOString(),
         attendee_count: Number(attendeeCount),
         agenda: agenda.trim() || undefined,
-        ai_suggestion: aiSuggestion || undefined,
+        ai_suggestion: aiSuggestion
+          ? (aiSuggestion as Record<string, unknown>)
+          : undefined,
       });
 
       onMeetingCreated(created);
@@ -236,20 +273,12 @@ export function MeetingForm({ onMeetingCreated }: MeetingFormProps) {
         `Засідання №${created.id} «${created.title}» успішно внесено до офіційного реєстру з порядком денним.`
       );
 
-      // Reset form
-      setTitle("");
-      setStartsAt("");
-      setEndsAt("");
-      setAttendeeCount(450);
-      setAgenda("");
-      setPasteText("");
-      setAiSuggestion(null);
-      setIsSuggested({ title: false, startsAt: false, endsAt: false, agenda: false });
+      handleResetForm();
     } catch (err: unknown) {
       if (err instanceof Error) {
         if (err.message.includes("401")) {
           setError(
-            "Потрібна авторизація (HTTP 401). Будь ласка, увійдіть через кнопку «Увійти» для створення засідань."
+            "Потрібна авторизація (HTTP 401). Будь ласка, увійдіть через кнопку «Увійти» для збереження засідання."
           );
         } else {
           setError(err.message);
@@ -263,29 +292,69 @@ export function MeetingForm({ onMeetingCreated }: MeetingFormProps) {
   };
 
   return (
-    <div className="border border-[#ced4da] dark:border-slate-700 bg-[#fdfdfd] dark:bg-slate-800/60 p-5 sm:p-6 rounded shadow-sm">
-      <div className="border-b border-[#ced4da] dark:border-slate-700 pb-3 mb-4">
-        <h2 className="font-rada-serif text-lg sm:text-xl font-bold uppercase tracking-wide text-black dark:text-white">
-          РОЗДІЛ I. РЕЄСТРАЦІЙНА КАРТКА ЗАСІДАННЯ
-        </h2>
-        <p className="font-rada-serif text-xs italic text-neutral-600 dark:text-neutral-400 mt-0.5">
-          Стаття 1. Порядок внесення нового пленарного засідання або наради до Єдиного
-          державного реєстру
-        </p>
+    <div className="border border-[#ced4da] dark:border-slate-700 bg-white dark:bg-slate-800/90 p-5 sm:p-7 rounded-lg shadow-sm">
+      {/* Header with Back button */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#ced4da] dark:border-slate-700 pb-3 mb-5">
+        <div>
+          <h2 className="font-rada-serif text-lg sm:text-xl font-bold uppercase tracking-wide text-black dark:text-white">
+            РОЗДІЛ I. РЕЄСТРАЦІЙНА КАРТКА ЗАСІДАННЯ
+          </h2>
+          <p className="font-rada-serif text-xs italic text-neutral-600 dark:text-neutral-400 mt-0.5">
+            Стаття 1. Порядок внесення нового пленарного засідання або наради до Єдиного
+            державного реєстру
+          </p>
+        </div>
+
+        {onCancel && (
+          <button
+            type="button"
+            onClick={onCancel}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs text-neutral-700 dark:text-neutral-300 hover:text-black dark:hover:text-white rounded border border-neutral-300 dark:border-slate-600 hover:bg-neutral-100 dark:hover:bg-slate-700 self-start sm:self-auto transition-colors"
+          >
+            <ArrowLeft className="h-3.5 w-3.5" />
+            <span>До реєстру засідань</span>
+          </button>
+        )}
       </div>
 
       {/* Lab 6: Paste an agenda box */}
-      <div className="mb-6 bg-blue-50/60 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900 rounded p-4">
-        <div className="flex items-center gap-2 mb-2 text-[#0e317e] dark:text-blue-300 font-bold text-xs sm:text-sm uppercase tracking-wide">
-          <Sparkles className="h-4 w-4 text-[#184dbd] dark:text-blue-400" />
-          <span>
-            ШВИДКЕ ЗАПОВНЕННЯ: ВСТАВИТИ ПОРЯДОК ДЕННИЙ (PASTE AN AGENDA WITH AI)
-          </span>
+      <div className="mb-6 bg-blue-50/70 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900 rounded-lg p-4 sm:p-5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
+          <div className="flex items-center gap-2 text-[#0e317e] dark:text-blue-300 font-bold text-xs sm:text-sm uppercase tracking-wide">
+            <Sparkles className="h-4 w-4 text-[#184dbd] dark:text-blue-400" />
+            <span>Швидке заповнення: Вставити порядок денний (AI Parser)</span>
+          </div>
+
+          <div className="flex items-center gap-2 text-xs">
+            <button
+              type="button"
+              onClick={() => setPasteText(SAMPLE_AGENDA)}
+              className="text-[#004bc1] dark:text-blue-400 hover:underline flex items-center gap-1 font-semibold"
+              title="Вставити тестовий текст наради"
+            >
+              <FileText className="h-3 w-3" />
+              <span>Вставити зразок</span>
+            </button>
+            {pasteText && (
+              <>
+                <span className="text-neutral-300 dark:text-slate-600">|</span>
+                <button
+                  type="button"
+                  onClick={() => setPasteText("")}
+                  className="text-neutral-500 hover:text-red-600 dark:hover:text-red-400 transition-colors"
+                >
+                  Очистити
+                </button>
+              </>
+            )}
+          </div>
         </div>
-        <p className="text-xs text-neutral-600 dark:text-neutral-400 mb-3 font-rada-serif">
-          Вставте довільний текст листа, повідомлення з чату або чорнових нотаток. Модель
-          Mistral через Amazon Bedrock автоматично витягне тему, час, тривалість, пункти
-          та доручення.
+
+        <p className="text-xs text-neutral-600 dark:text-neutral-400 mb-3 font-rada-serif leading-relaxed">
+          Вставте довільний текст листа, повідомлення з месенджера або чорнових нотаток.
+          Модель <strong>Mistral (Ministral 3)</strong> через{" "}
+          <strong>Amazon Bedrock</strong> автоматично розпізнає тему, час, тривалість,
+          перелік питань та доручення.
         </p>
 
         <textarea
@@ -294,13 +363,52 @@ export function MeetingForm({ onMeetingCreated }: MeetingFormProps) {
           onChange={(e) => setPasteText(e.target.value)}
           disabled={isParsing || isSubmitting}
           placeholder="Наприклад: Пн 10:00, синк по прайсингу, 45 хв. 1) нові тарифи Pro — Олена, 15 хв 2) фідбек від клієнтів — Taras 3) що робимо з річною знижкою. Taras до п'ятниці збирає порівняння з конкурентами."
-          className="w-full text-xs sm:text-sm p-2.5 bg-white dark:bg-slate-900 border border-neutral-300 dark:border-neutral-700 rounded focus:border-[#184dbd] focus:outline-none font-sans mb-2"
+          className="w-full text-xs sm:text-sm p-3 bg-white dark:bg-slate-900 border border-neutral-300 dark:border-neutral-700 rounded-md focus:border-[#184dbd] focus:ring-1 focus:ring-[#184dbd] focus:outline-none font-sans mb-3"
         />
 
+        {/* Auth prompt if not logged in */}
+        {!auth.isAuthenticated && !auth.isLoading && (
+          <div className="mb-3 p-2.5 text-xs bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800 text-amber-900 dark:text-amber-200 rounded flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <AlertCircle className="h-4 w-4 shrink-0 text-amber-600" />
+              <span>ШІ-парсер вимагає авторизації в системі.</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => auth.signinRedirect()}
+              className="inline-flex items-center gap-1 px-2.5 py-1 bg-amber-600 hover:bg-amber-700 text-white font-semibold rounded text-[11px] shrink-0"
+            >
+              <LogIn className="h-3 w-3" />
+              <span>Увійти</span>
+            </button>
+          </div>
+        )}
+
         {parseError && (
-          <div className="mb-2 p-2.5 text-xs bg-red-100 dark:bg-red-950/50 border border-red-300 dark:border-red-800 text-red-800 dark:text-red-200 rounded flex items-center gap-2">
+          <div className="mb-3 p-2.5 text-xs bg-red-100 dark:bg-red-950/50 border border-red-300 dark:border-red-800 text-red-800 dark:text-red-200 rounded flex items-center gap-2">
             <AlertCircle className="h-4 w-4 shrink-0 text-red-600" />
             <span>{parseError}</span>
+          </div>
+        )}
+
+        {/* AI Result notification badge */}
+        {aiSuggestion && (
+          <div className="mb-3 p-2.5 text-xs bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-800 text-emerald-800 dark:text-emerald-200 rounded flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />
+              <span>
+                <strong>ШІ успішно розпізнав дані:</strong> поля форми заповнено. Ви
+                можете перевірити та скоригувати їх нижче.
+              </span>
+            </div>
+            <div className="flex items-center gap-2 text-[11px] font-mono text-neutral-600 dark:text-neutral-400">
+              {aiSuggestion.latency_ms && (
+                <span>Час: {(aiSuggestion.latency_ms / 1000).toFixed(1)} с</span>
+              )}
+              {aiSuggestion.cost_usd !== undefined && (
+                <span>• Вартість: ${aiSuggestion.cost_usd.toFixed(5)}</span>
+              )}
+            </div>
           </div>
         )}
 
@@ -312,7 +420,7 @@ export function MeetingForm({ onMeetingCreated }: MeetingFormProps) {
               disabled={isSubmitting || !pasteText.trim()}
               className="px-4 py-2 bg-[#0e317e] hover:bg-[#184dbd] text-white text-xs font-bold uppercase tracking-wider rounded border border-[#09235c] shadow-sm flex items-center gap-1.5 transition-colors disabled:opacity-50"
             >
-              <Sparkles className="h-3.5 w-3.5" />
+              <Sparkles className="h-3.5 w-3.5 text-[#ffe358]" />
               <span>Розпізнати штучним інтелектом (Parse with AI)</span>
             </button>
           ) : (
@@ -363,7 +471,7 @@ export function MeetingForm({ onMeetingCreated }: MeetingFormProps) {
             </label>
             {isSuggested.title && (
               <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-200 text-[10px] font-bold rounded-full uppercase tracking-wider">
-                <Sparkles className="h-2.5 w-2.5" />
+                <Sparkles className="h-2.5 w-2.5 text-blue-600" />
                 AI Suggested
               </span>
             )}
@@ -394,7 +502,7 @@ export function MeetingForm({ onMeetingCreated }: MeetingFormProps) {
               </label>
               {isSuggested.startsAt && (
                 <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-200 text-[10px] font-bold rounded-full uppercase tracking-wider">
-                  <Clock className="h-2.5 w-2.5" />
+                  <Clock className="h-2.5 w-2.5 text-blue-600" />
                   AI Suggested
                 </span>
               )}
@@ -423,7 +531,7 @@ export function MeetingForm({ onMeetingCreated }: MeetingFormProps) {
               </label>
               {isSuggested.endsAt && (
                 <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-200 text-[10px] font-bold rounded-full uppercase tracking-wider">
-                  <Clock className="h-2.5 w-2.5" />
+                  <Clock className="h-2.5 w-2.5 text-blue-600" />
                   AI Suggested
                 </span>
               )}
@@ -472,7 +580,7 @@ export function MeetingForm({ onMeetingCreated }: MeetingFormProps) {
             </label>
             {isSuggested.agenda && (
               <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-200 text-[10px] font-bold rounded-full uppercase tracking-wider">
-                <ListTodo className="h-2.5 w-2.5" />
+                <ListTodo className="h-2.5 w-2.5 text-blue-600" />
                 AI Suggested
               </span>
             )}
@@ -491,7 +599,7 @@ export function MeetingForm({ onMeetingCreated }: MeetingFormProps) {
           />
         </div>
 
-        <div className="pt-2">
+        <div className="pt-2 flex flex-wrap items-center gap-3">
           <button
             type="submit"
             disabled={isSubmitting}
@@ -508,6 +616,16 @@ export function MeetingForm({ onMeetingCreated }: MeetingFormProps) {
                 <span>Внести до офіційного реєстру засідань</span>
               </>
             )}
+          </button>
+
+          <button
+            type="button"
+            onClick={handleResetForm}
+            disabled={isSubmitting}
+            className="px-4 py-2 text-xs font-semibold text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white rounded border border-neutral-300 dark:border-slate-600 hover:bg-neutral-100 dark:hover:bg-slate-700 flex items-center gap-1.5 transition-colors"
+          >
+            <RotateCcw className="h-3.5 w-3.5" />
+            <span>Очистити форму</span>
           </button>
         </div>
       </form>
