@@ -1,5 +1,13 @@
 terraform {
   required_version = ">= 1.5.0"
+
+  cloud {
+    organization = "1233_my_app"
+    workspaces {
+      name = "1233_ooad"
+    }
+  }
+
   required_providers {
     aws = {
       source  = "hashicorp/aws"
@@ -8,6 +16,10 @@ terraform {
     random = {
       source  = "hashicorp/random"
       version = "~> 3.6"
+    }
+    archive = {
+      source  = "hashicorp/archive"
+      version = "~> 2.0"
     }
   }
 }
