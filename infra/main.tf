@@ -13,7 +13,7 @@ data "aws_subnets" "default" {
 
 # =============================================================================
 # 1. Amazon ECR — Container Registry (Cost: $0 within 500MB Free Tier)
-# ==============================================================================
+# =============================================================================
 resource "aws_ecr_repository" "backend" {
   name                 = "${var.project_name}-backend"
   image_tag_mutability = "MUTABLE"
