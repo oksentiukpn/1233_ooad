@@ -19,8 +19,9 @@ resource "aws_s3_bucket" "reports" {
   force_destroy = true
 
   tags = {
-    Name    = "${var.project_name}-reports"
-    Project = var.project_name
+    Name      = "${var.project_name}-reports"
+    Project   = var.project_name
+    ManagedBy = "Terraform-HCP"
   }
 }
 
