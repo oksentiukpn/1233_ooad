@@ -55,14 +55,14 @@ COGNITO_LOGOUT_URI     ?= https://1233.pp.ua/
 
 .PHONY: help install lint format format-check test build build-frontend build-backend \
         deploy-frontend deploy-backend deploy aws-deploy aws-deploy-backend aws-deploy-frontend db-migrate dev down clean \
-        infra-init infra-plan infra-apply-base infra-apply-lambda infra-destroy deploy-aws
+        infra-init infra-plan infra-destroy deploy-aws llm-hello parse report-now reports-list
 
 # ------------------------------------------------------------------------------
 # Help & Documentation
 # ------------------------------------------------------------------------------
 help:
 	@echo "================================================================================"
-	@echo "  SPRY \u2014 Architecture Migration & Development Toolchain"
+	@echo "  SPRY — Architecture Migration & Development Toolchain"
 	@echo "================================================================================"
 	@echo "Environment: AWS Region: $(AWS_REGION) | ECR Image: $(ECR_IMAGE)"
 	@echo "--------------------------------------------------------------------------------"
@@ -84,6 +84,11 @@ help:
 	@echo "  make deploy          Deploy full system (backend first, then frontend)"
 	@echo "  make aws-deploy      Alias for deploy (per architecture-migration.md)"
 	@echo "  make clean           Clean up local build artifacts and caches"
+	@echo ""
+	@echo "Infrastructure as Code (Terraform & HCP Terraform):"
+	@echo "  make infra-init      Initialize Terraform working directory and providers"
+	@echo "  make infra-plan      Run speculative plan comparing local HCL with reality"
+	@echo "                       Note: Applies are executed via HCP Terraform upon merge"
 	@echo "================================================================================"
 
 # ------------------------------------------------------------------------------
@@ -234,7 +239,7 @@ else ifeq ($(BACKEND_DEPLOY_TARGET),apprunner)
 		fi; \
 	fi
 else
-	@echo "--> [2/2] [AWS ECS Fargate] Updating service '$(ECS_SERVICE)' on cluster '$(ECS_CLUSTER)' to tag '$(IMAGE_TAG)'...\"\
+	@echo "--> [2/2] [AWS ECS Fargate] Updating service '$(ECS_SERVICE)' on cluster '$(ECS_CLUSTER)' to tag '$(IMAGE_TAG)'...\""
 	@if command -v aws >/dev/null 2>&1; then \
 		aws ecs update-service --cluster $(ECS_CLUSTER) --service $(ECS_SERVICE) --force-new-deployment; \
 	fi
@@ -253,23 +258,17 @@ aws-deploy-backend: deploy-backend
 aws-deploy-frontend: deploy-frontend
 
 # ------------------------------------------------------------------------------
-# Terraform AWS Turn-Key Targets
+# Terraform Infrastructure Targets (Lab 7)
 # ------------------------------------------------------------------------------
+# Note: Per Lab 7 rules, 'terraform apply' is not run locally.
+# Applies happen automatically via HCP Terraform upon merging pull requests to main.
 infra-init:
 	@echo "--> Initializing Terraform in $(INFRA_DIR)..."
 	@terraform -chdir=$(INFRA_DIR) init
 
 infra-plan:
-	@echo "--> Running Terraform plan..."
+	@echo "--> Running Terraform plan in $(INFRA_DIR)..."
 	@terraform -chdir=$(INFRA_DIR) plan
-
-infra-apply-base:
-	@echo "--> Provisioning Base AWS Infrastructure (ECR, RDS, S3, CloudFront)..."
-	@terraform -chdir=$(INFRA_DIR) apply -var="enable_lambda=false"
-
-infra-apply-lambda:
-	@echo "--> Provisioning/Updating AWS Lambda service..."
-	@terraform -chdir=$(INFRA_DIR) apply -var="enable_lambda=true"
 
 infra-destroy:
 	@echo "--> Destroying ALL AWS resources to stop any billing..."
@@ -279,10 +278,6 @@ deploy-aws:
 	@echo "--> Running turn-key deployment to AWS..."
 	@./scripts/deploy_aws.sh
 
-# ------------------------------------------------------------------------------
-# Cleanup
-# ------------------------------------------------------------------------------
-# ------------------------------------------------------------------------------
 # ------------------------------------------------------------------------------
 # Lab 6: AI Agenda Parser Targets (Amazon Bedrock)
 # ------------------------------------------------------------------------------
@@ -294,6 +289,7 @@ llm-hello:
 parse:
 	@PYTHONPATH=backend $(PYTHON) scripts/parse_cli.py "$(TEXT)" "$(PARSER_MODEL)"
 
+# ------------------------------------------------------------------------------
 # Lab 5: Event-Driven Reports Targets
 # ------------------------------------------------------------------------------
 REPORT_QUEUE_NAME      ?= spry-report-requests

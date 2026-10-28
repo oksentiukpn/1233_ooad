@@ -40,6 +40,7 @@ resource "aws_cognito_identity_provider" "google" {
   attribute_mapping = {
     email          = "email"
     email_verified = "email_verified"
+    username       = "sub"
   }
 
   lifecycle {

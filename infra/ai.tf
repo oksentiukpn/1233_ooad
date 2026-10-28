@@ -98,15 +98,15 @@ resource "aws_lambda_function_url" "agenda_parser" {
 
   cors {
     allow_credentials = false
-    allow_origins     = [
+    allow_origins = [
       "https://1233.pp.ua",
       "https://www.1233.pp.ua",
       "http://localhost:5173",
       "http://127.0.0.1:5173"
     ]
-    allow_methods     = ["*"]
-    allow_headers     = ["*"]
-    max_age           = 86400
+    allow_methods = ["*"]
+    allow_headers = ["*"]
+    max_age       = 86400
   }
 }
 
