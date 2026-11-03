@@ -1,0 +1,22 @@
+{
+  "query_id": "c89cd68d-81cd-451b-b18a-51021efbd8b8",
+  "runtime_seconds": 2.31,
+  "data_scanned_bytes": 1260692423,
+  "data_scanned_mb": 1202.289984703064,
+  "rows": [
+    [
+      "late_over_60s",
+      "total_events",
+      "pct_late_60s",
+      "late_over_1h",
+      "pct_late_1h"
+    ],
+    [
+      "60824",
+      "3030197",
+      "2.0073",
+      "0",
+      "0.0"
+    ]
+  ]
+}

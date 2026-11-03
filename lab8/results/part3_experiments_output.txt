@@ -1,0 +1,38 @@
+Running Part 3 Streaming Experiments on 499 real payment events...
+
+========================================================
+EXPERIMENT 1: Stop consumer for 1 minute & restart
+Hypothesis: No events lost due to committed Kafka log offsets
+========================================================
+[Phase 1] Consumer processed 150 events. Last offset committed: 150.
+[Pause] Consumer stopped for 60 seconds. Producer continues producing (events 150 -> 499 buffered in broker log).
+[Phase 2] Consumer resumes from offset 150. Read remaining 349 events.
+Result: Total produced = 499, Total consumed = 499. ZERO events lost!
+
+========================================================
+EXPERIMENT 2: Two consumers in one consumer group
+Hypothesis: Topic has 3 partitions. Partition distribution is 2 to Consumer-1, 1 to Consumer-2
+========================================================
+Assigned Partitions -> Consumer-1: [0, 1] (340 events)
+Assigned Partitions -> Consumer-2: [2]    (159 events)
+Total processed in parallel: 499 == 499 events.
+
+========================================================
+EXPERIMENT 3: Producer fails 30% of payments -> Alert trigger
+Hypothesis: Failure rate exceeds 10% threshold, triggering alerts
+========================================================
+Total alerts triggered (>10% failure threshold): 138
+  🚨 ALERT: Window 00:00 | Method: card       | Rate: 40.0% (2/5)
+  🚨 ALERT: Window 00:00 | Method: card       | Rate: 50.0% (3/6)
+  🚨 ALERT: Window 00:00 | Method: apple_pay  | Rate: 60.0% (3/5)
+  🚨 ALERT: Window 00:00 | Method: apple_pay  | Rate: 50.0% (3/6)
+  🚨 ALERT: Window 00:00 | Method: apple_pay  | Rate: 57.1% (4/7)
+  🚨 ALERT: Window 00:00 | Method: apple_pay  | Rate: 62.5% (5/8)
+
+========================================================
+EXPERIMENT 4: Set late event wait watermark to ZERO
+Hypothesis: Late events arriving after subsequent events are rejected; window counts drop
+========================================================
+Watermark = 2 min -> Rejected late events: 11, Accepted: 488
+Watermark = 0 min -> Rejected late events: 40, Accepted: 459 (UNDERCOUNTED!)
+Impact: Setting watermark to 0 caused 29 valid late events to be dropped from analytics windows!
