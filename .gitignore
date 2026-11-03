@@ -63,3 +63,7 @@ terraform.rc
 Thumbs.db
 *.zip
 .tf-bootstrap/
+
+# Lab 8 raw event dumps
+lab8/**/*.jsonl*
+lab8/**/*.csv
