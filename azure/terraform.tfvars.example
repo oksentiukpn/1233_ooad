@@ -1,0 +1,11 @@
+prefix          = "spry"
+location        = "norwayeast"
+db_username     = "spryadmin"
+db_name         = "spry"
+container_image = "ghcr.io/spry/backend:latest"
+cors_origins = [
+  "https://1233.pp.ua",
+  "https://www.1233.pp.ua",
+  "https://spry.pages.dev",
+  "http://localhost:5173"
+]
