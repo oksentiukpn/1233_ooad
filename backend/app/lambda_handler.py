@@ -46,7 +46,7 @@ def run_migrations() -> Dict[str, Any]:
 
 
 def lambda_handler(event: Dict[str, Any], context: Any) -> Any:
-    """Entry point router for AWS Lambda supporting HTTP requests and programmatic tasks."""
+    """Entry point router for AWS Lambda supporting HTTP requests and tasks."""
     if event.get("task") == "migrate" or event.get("action") == "migrate":
         logger.info("Executing programmatic migration task...")
         return run_migrations()
