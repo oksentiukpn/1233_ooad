@@ -2,10 +2,11 @@ prefix          = "spry"
 location        = "norwayeast"
 db_username     = "spryadmin"
 db_name         = "spry"
-container_image = "ghcr.io/spry/backend:latest"
+container_image = "mcr.microsoft.com/k8se/quickstart:latest"
 cors_origins = [
   "https://1233.pp.ua",
   "https://www.1233.pp.ua",
+  "https://azure.1233.pp.ua",
   "https://spry.pages.dev",
   "http://localhost:5173"
 ]

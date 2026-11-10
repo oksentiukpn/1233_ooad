@@ -12,6 +12,7 @@ import {
   Sparkles,
   ListFilter,
   X,
+  Cloud,
 } from "lucide-react";
 
 export function App() {
@@ -21,6 +22,9 @@ export function App() {
   const [activeTab, setActiveTab] = useState<"registry" | "create">("registry");
 
   const pathname = typeof window !== "undefined" ? window.location.pathname : "";
+  const hostname = typeof window !== "undefined" ? window.location.hostname : "";
+  const isAzure = hostname.startsWith("azure");
+
   const isLoginPage =
     pathname === "/login" || pathname === "/login/" || pathname.startsWith("/login/");
   const isCallbackPage =
@@ -79,44 +83,50 @@ export function App() {
     );
   }
 
-  // 2. /auth/callback/ Dedicated Processing State
-  if (auth.isLoading && isCallbackPage) {
+  // 2. /auth/callback Dedicated Page: processing tokens
+  if (isCallbackPage && auth.isLoading) {
     return (
       <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center text-white gap-4 p-6 text-center font-sans">
         <Loader2 className="h-10 w-10 animate-spin text-[#ffe358]" />
-        <h2 className="text-xl font-bold">Обробка авторизації...</h2>
+        <h2 className="text-xl font-bold">Завершення входу в систему...</h2>
         <p className="text-sm text-slate-300 max-w-md leading-relaxed">
-          Виконується безпечний OIDC PKCE обмін коду на токени Amazon Cognito.
-          Зачекайте...
+          Обробка криптографічних OIDC токенів та створення сесії користувача.
         </p>
       </div>
     );
   }
 
-  return (
-    <div className="rada-page-container">
-      {/* Auth error notification banner */}
-      {auth.error && (
-        <div className="bg-red-600 text-white px-4 py-2 text-center text-xs font-semibold flex items-center justify-center gap-2 shadow font-sans">
-          <AlertCircle className="h-4 w-4 shrink-0" />
-          <span>Помилка OIDC авторизації: {auth.error.message}</span>
-          <button
-            type="button"
-            onClick={() => (window.location.href = "/")}
-            className="underline ml-2 hover:text-red-100"
-          >
-            На головну
-          </button>
-        </div>
-      )}
+  // 3. Callback Error Page
+  if (auth.error) {
+    return (
+      <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center text-white gap-4 p-6 text-center font-sans">
+        <AlertCircle className="h-10 w-10 text-red-400" />
+        <h2 className="text-xl font-bold">Помилка авторизації</h2>
+        <p className="text-sm text-slate-300 max-w-md leading-relaxed">
+          {auth.error.message}
+        </p>
+        <button
+          type="button"
+          onClick={() => {
+            window.location.href = "/";
+          }}
+          className="mt-2 inline-flex items-center gap-1.5 px-4 py-2 rounded bg-slate-700 text-white text-xs font-semibold hover:bg-slate-600 transition-colors shadow"
+        >
+          Повернутися на головну
+        </button>
+      </div>
+    );
+  }
 
-      {/* 1. TOP HEADER (AUTHENTIC RADA STATE BRANDING) */}
-      <header id="header" className="rada-header">
-        <div className="px-5 sm:px-8 py-3.5 flex flex-col md:flex-row md:items-center justify-between gap-4">
-          {/* Logo brand */}
-          <div className="flex items-center gap-3">
+  return (
+    <div className="min-h-screen bg-[#f4f6f9] dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col transition-colors duration-200">
+      {/* 1. TOP HEADER (GOVERNMENTAL PARLIAMENTARY STYLE) */}
+      <header className="rada-header text-white shadow-md print:hidden">
+        <div className="px-5 sm:px-8 py-3.5 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          {/* Official Rada Brand & Portal Title */}
+          <div className="flex items-center gap-3.5">
             <a
-              href="https://zakon.rada.gov.ua/laws/main/index"
+              href="https://www.rada.gov.ua"
               target="_blank"
               rel="noreferrer"
               className="flex items-center gap-3 text-white no-underline hover:opacity-95"
@@ -140,16 +150,48 @@ export function App() {
                     Верховна Рада України
                   </span>
                 </div>
-                <div className="text-xs font-medium text-[#ffe358] tracking-wide mt-0.5 font-sans">
-                  Законодавство України &bull; Єдина інформаційна система реєстрації
-                  засідань «Spry»
+                <div className="flex flex-wrap items-center gap-2 text-xs font-medium text-[#ffe358] tracking-wide mt-0.5 font-sans">
+                  <span>
+                    Законодавство України &bull; Єдина інформаційна система реєстрації засідань «Spry»
+                  </span>
+                  {isAzure ? (
+                    <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-semibold bg-sky-500/25 text-sky-200 border border-sky-400/40">
+                      <span className="h-1.5 w-1.5 rounded-full bg-sky-400 animate-pulse" />
+                      Хмара: Microsoft Azure (norwayeast)
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-semibold bg-amber-500/25 text-amber-200 border border-amber-400/40">
+                      <span className="h-1.5 w-1.5 rounded-full bg-amber-400" />
+                      Хмара: AWS (us-east-1)
+                    </span>
+                  )}
                 </div>
               </div>
             </a>
           </div>
 
-          {/* Right Header: Auth & Theme Switch */}
-          <div className="flex items-center gap-3 shrink-0 self-end md:self-auto font-sans">
+          {/* Right Header: Cloud Switcher, Auth & Theme Switch */}
+          <div className="flex items-center gap-2.5 shrink-0 self-end md:self-auto font-sans">
+            {isAzure ? (
+              <a
+                href="https://1233.pp.ua"
+                className="inline-flex items-center gap-1 text-[11px] font-medium text-slate-200 hover:text-white px-2.5 py-1 rounded bg-white/10 hover:bg-white/20 transition-colors border border-white/20"
+                title="Перейти на основну версію сайту, розгорнуту на Amazon Web Services"
+              >
+                <Cloud className="h-3 w-3 text-amber-300" />
+                <span>AWS версія ↗</span>
+              </a>
+            ) : (
+              <a
+                href="https://azure.1233.pp.ua"
+                className="inline-flex items-center gap-1 text-[11px] font-medium text-yellow-300 hover:text-yellow-100 px-2.5 py-1 rounded bg-[#ffe358]/15 hover:bg-[#ffe358]/25 transition-colors border border-[#ffe358]/35"
+                title="Перейти на мультихмарну версію сайту, розгорнуту на Microsoft Azure"
+              >
+                <Cloud className="h-3 w-3 text-sky-300" />
+                <span>Azure версія ↗</span>
+              </a>
+            )}
+
             <AuthButton />
 
             <button
@@ -175,11 +217,10 @@ export function App() {
             <button
               type="button"
               onClick={() => setActiveTab("registry")}
-              className={`px-3 py-1.5 rounded font-semibold transition-all flex items-center gap-1.5 ${
-                activeTab === "registry"
+              className={`px-3 py-1.5 rounded font-semibold transition-all flex items-center gap-1.5 ${activeTab === "registry"
                   ? "bg-[#ffe358] text-slate-900 shadow-sm"
                   : "text-white hover:bg-white/10"
-              }`}
+                }`}
             >
               <ListFilter className="h-3.5 w-3.5" />
               <span>Реєстр засідань</span>
@@ -188,11 +229,10 @@ export function App() {
             <button
               type="button"
               onClick={() => setActiveTab("create")}
-              className={`px-3 py-1.5 rounded font-semibold transition-all flex items-center gap-1.5 ${
-                activeTab === "create"
+              className={`px-3 py-1.5 rounded font-semibold transition-all flex items-center gap-1.5 ${activeTab === "create"
                   ? "bg-[#ffe358] text-slate-900 shadow-sm"
                   : "text-white hover:bg-white/10"
-              }`}
+                }`}
             >
               <Sparkles className="h-3.5 w-3.5 text-[#ffe358] group-hover:text-white" />
               <span>+ Нове засідання (з ШІ)</span>
@@ -238,51 +278,65 @@ export function App() {
 
       {/* 3. PARLIAMENTARY STATUS RIBBON */}
       <div className="px-5 sm:px-8 pt-3 pb-1">
-        <div className="rada-ribbon-panel rounded-md px-3.5 py-2 flex flex-wrap items-center justify-between gap-2 text-xs font-sans text-slate-700 dark:text-slate-300">
+        <div className="flex flex-wrap items-center justify-between text-xs text-slate-600 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800 pb-2">
           <div className="flex items-center gap-2">
-            <span className="inline-block h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-            <span className="font-semibold text-slate-900 dark:text-white">
-              Єдина державна інформаційна система засідань
+            <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            <span className="font-semibold text-slate-800 dark:text-slate-200">
+              {isAzure
+                ? "База даних підключена (Azure PostgreSQL Flexible Server)"
+                : "База даних підключена (AWS Aurora Serverless v2)"}
             </span>
-            <span className="text-slate-500 dark:text-slate-400 hidden sm:inline">
-              &bull;
-            </span>
-            <span className="text-slate-600 dark:text-slate-400 hidden sm:inline">
-              База даних: Aurora PostgreSQL
-            </span>
+            <span>&bull;</span>
+            <span>Режим: Законотворча сесія 2026</span>
           </div>
-
-          <div className="flex items-center gap-2 text-[11px] font-mono text-slate-600 dark:text-slate-400">
-            <span className="px-1.5 py-0.5 rounded bg-blue-100 text-blue-900 dark:bg-blue-950 dark:text-blue-300 font-sans font-bold text-[10px] uppercase">
-              ШІ-Сервіс: Bedrock Ministral 3
-            </span>
-            <span className="hidden md:inline">ВРУ / Секретаріат</span>
+          <div className="text-[11px] text-slate-500">
+            Оновлено: {new Date().toLocaleDateString("uk-UA")}
           </div>
         </div>
       </div>
 
-      {/* 4. MAIN CONTENT AREA */}
-      <main className="flex-1 px-3 sm:px-8 py-4">
+      {/* 4. MAIN WORKSPACE / CONTENT */}
+      <main className="flex-1 px-5 sm:px-8 py-4">
         <MeetingsPage
-          searchQuery={searchQuery}
           activeTab={activeTab}
           setActiveTab={setActiveTab}
+          searchQuery={searchQuery}
         />
       </main>
 
-      {/* 5. FOOTER */}
-      <footer className="mt-auto border-t border-[#ced4da] dark:border-slate-800 bg-[#f7f7f7] dark:bg-slate-900 text-slate-700 dark:text-slate-300 text-xs px-6 py-6 font-sans">
-        <div className="max-w-[960px] mx-auto text-center font-medium text-slate-600 dark:text-slate-400">
-          &copy;{" "}
-          <a
-            href="https://www.rada.gov.ua/"
-            target="_blank"
-            rel="noreferrer"
-            className="rada-link font-semibold"
-          >
-            Верховна Рада України
-          </a>{" "}
-          1994–2026. Єдина система обліку пленарних засідань та нарад Spry.
+      {/* 5. PARLIAMENTARY FOOTER */}
+      <footer className="rada-footer text-slate-300 py-6 px-5 sm:px-8 mt-auto border-t border-blue-900/40 text-xs font-sans print:hidden">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-2">
+            <img
+              src="/rada_assets/gerb_kQCl.gif"
+              alt="Герб"
+              className="h-6 w-auto opacity-80"
+            />
+            <span className="font-medium text-slate-200">
+              © {new Date().getFullYear()} Верховна Рада України. Інформаційна система
+              «Spry».
+            </span>
+          </div>
+          <div className="text-slate-400 flex flex-wrap gap-4">
+            <a
+              href="https://zakon.rada.gov.ua"
+              target="_blank"
+              rel="noreferrer"
+              className="hover:text-[#ffe358] transition-colors"
+            >
+              База «Законодавство»
+            </a>
+            <span>&bull;</span>
+            <a
+              href="https://it.rada.gov.ua"
+              target="_blank"
+              rel="noreferrer"
+              className="hover:text-[#ffe358] transition-colors"
+            >
+              Управління комп’ютеризованих систем
+            </a>
+          </div>
         </div>
       </footer>
     </div>

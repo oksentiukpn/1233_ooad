@@ -16,7 +16,8 @@ export function getRedirectUri(): string {
   if (typeof window !== "undefined") {
     if (
       window.location.hostname === "localhost" ||
-      window.location.hostname === "127.0.0.1"
+      window.location.hostname === "127.0.0.1" ||
+      window.location.hostname.startsWith("azure")
     ) {
       return `${window.location.origin}/auth/callback/`;
     }
@@ -28,7 +29,8 @@ export function getLogoutUri(): string {
   if (typeof window !== "undefined") {
     if (
       window.location.hostname === "localhost" ||
-      window.location.hostname === "127.0.0.1"
+      window.location.hostname === "127.0.0.1" ||
+      window.location.hostname.startsWith("azure")
     ) {
       return `${window.location.origin}/`;
     }

@@ -6,11 +6,24 @@ import {
 } from "@/types/meeting";
 import { getAccessToken } from "./authApi";
 
-// The browser calls the API directly via baked-in Function URL or NEXT_PUBLIC_API_BASE_URL
-const rawBase =
-  import.meta.env.VITE_API_URL || import.meta.env.NEXT_PUBLIC_API_BASE_URL || "";
+export const AZURE_API_URL =
+  "https://spry-api.gentleplant-48a4629f.norwayeast.azurecontainerapps.io/api";
 
-const API_BASE = rawBase ? `${rawBase.replace(/\/$/, "")}/api` : "/api";
+export function getApiBase(): string {
+  if (typeof window !== "undefined") {
+    // When visiting the Azure deployment (azure.1233.pp.ua or azure subdomain),
+    // route API queries directly to the Azure Container Apps backend
+    if (window.location.hostname.startsWith("azure")) {
+      return AZURE_API_URL;
+    }
+  }
+
+  // The browser calls the API directly via baked-in Function URL or NEXT_PUBLIC_API_BASE_URL
+  const rawBase =
+    import.meta.env.VITE_API_URL || import.meta.env.NEXT_PUBLIC_API_BASE_URL || "";
+
+  return rawBase ? `${rawBase.replace(/\/$/, "")}/api` : "/api";
+}
 
 // Dedicated Lambda Function URL for agenda parser outside VPC ($0 idle cost)
 const rawParserUrl =
@@ -31,7 +44,7 @@ function getAuthHeaders(): Record<string, string> {
 
 export async function fetchMeetings(): Promise<Meeting[]> {
   const headers = getAuthHeaders();
-  const response = await fetch(`${API_BASE}/meetings`, {
+  const response = await fetch(`${getApiBase()}/meetings`, {
     headers,
   });
 
@@ -47,7 +60,7 @@ export async function createMeeting(data: MeetingCreate): Promise<Meeting> {
   const headers = getAuthHeaders();
   headers["Content-Type"] = "application/json";
 
-  const response = await fetch(`${API_BASE}/meetings`, {
+  const response = await fetch(`${getApiBase()}/meetings`, {
     method: "POST",
     headers,
     body: JSON.stringify(data),
@@ -79,7 +92,7 @@ export async function saveMeetingAgenda(
   const headers = getAuthHeaders();
   headers["Content-Type"] = "application/json";
 
-  const response = await fetch(`${API_BASE}/meetings/${meetingId}/agenda`, {
+  const response = await fetch(`${getApiBase()}/meetings/${meetingId}/agenda`, {
     method: "POST",
     headers,
     body: JSON.stringify(data),

@@ -1,5 +1,5 @@
-// Cloudflare Pages Function: Reverse Proxy for /api/* to AWS Lambda Function URL
-// Eliminates CORS issues and provides same-origin API access under 1233.pp.ua
+// Cloudflare Pages Function: Reverse Proxy for /api/* to AWS Lambda or Azure Container Apps
+// Eliminates CORS issues and provides same-origin API access under 1233.pp.ua and azure.1233.pp.ua
 
 interface Env {
   BACKEND_URL?: string;
@@ -7,16 +7,21 @@ interface Env {
 
 const DEFAULT_BACKEND_URL =
   "https://o2lag7n6zckjlt4uanqgcwzure0ejyju.lambda-url.us-east-1.on.aws";
+const AZURE_BACKEND_URL =
+  "https://spry-api.gentleplant-48a4629f.norwayeast.azurecontainerapps.io";
 
 export async function onRequest(context: { request: Request; env?: Env }) {
-  const backendBase = context.env?.BACKEND_URL || DEFAULT_BACKEND_URL;
   const url = new URL(context.request.url);
+  const isAzure = url.hostname.startsWith("azure");
+  const backendBase = isAzure
+    ? AZURE_BACKEND_URL
+    : context.env?.BACKEND_URL || DEFAULT_BACKEND_URL;
   const targetUrl = new URL(url.pathname + url.search, backendBase);
 
   const headers = new Headers(context.request.headers);
-  // Important: Remove original host so fetch uses the Lambda Function URL domain host
+  // Important: Remove original host so fetch uses the backend domain host
   headers.delete("host");
-  headers.set("x-forwarded-host", "1233.pp.ua");
+  headers.set("x-forwarded-host", url.hostname);
   headers.set("x-forwarded-proto", "https");
 
   const isGetOrHead =
@@ -41,5 +46,6 @@ export async function onRequest(context: { request: Request; env?: Env }) {
     });
   }
 
+  // Pass along response with preserved headers
   return response;
 }

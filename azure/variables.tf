@@ -40,6 +40,7 @@ variable "cors_origins" {
   default = [
     "https://1233.pp.ua",
     "https://www.1233.pp.ua",
+    "https://azure.1233.pp.ua",
     "https://spry.pages.dev",
     "http://localhost:5173",
     "http://127.0.0.1:5173"
