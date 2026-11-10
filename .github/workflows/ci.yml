@@ -77,29 +77,17 @@ jobs:
       - name: Run TypeScript typecheck & production build
         run: npm run build
 
-  deploy-backend:
-    name: Step 8 — Backend CD to AWS Lambda & Azure GHCR
+  build-and-push-azure-ghcr:
+    name: Build & Push Backend Container to GHCR (Azure)
     needs: [backend-lint-and-test, frontend-lint-and-typecheck]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
     permissions:
-      id-token: write # Step 8: Required for requesting the GitHub OIDC JWT token
-      contents: read # Required for actions/checkout
-      packages: write # For publishing OCI image to GHCR for Azure Container Apps
+      contents: read
+      packages: write
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
-
-      - name: Configure AWS credentials via GitHub OIDC
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: arn:aws:iam::04b077958ddb:role/spry-github-actions-deploy-role
-          role-session-name: GitHubActionsDeploymentSession
-          aws-region: us-east-1
-
-      - name: Log in to Amazon ECR
-        id: login-ecr
-        uses: aws-actions/amazon-ecr-login@v2
 
       - name: Log in to GitHub Container Registry (GHCR)
         uses: docker/login-action@v3
@@ -107,6 +95,45 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push standard container image to GHCR for Azure
+        run: |
+          echo "Building standard container image for Azure Container Apps..."
+          OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          docker buildx build \
+            --platform linux/amd64 \
+            --provenance=false \
+            --sbom=false \
+            -t ghcr.io/${OWNER}/spry-backend:latest \
+            -t ghcr.io/${OWNER}/spry-backend:${{ github.sha }} \
+            -f backend/Dockerfile backend \
+            --push
+
+  deploy-backend:
+    name: Step 8 — Backend CD to AWS Lambda
+    needs: [backend-lint-and-test, frontend-lint-and-typecheck]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write # Step 8: Required for requesting the GitHub OIDC JWT token
+      contents: read # Required for actions/checkout
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials via GitHub OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME || 'arn:aws:iam::791614297907:role/spry-github-actions-role' }}
+          role-session-name: GitHubActionsDeploymentSession
+          aws-region: us-east-1
+
+      - name: Log in to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -125,19 +152,6 @@ jobs:
             -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG \
             -t $ECR_REGISTRY/$ECR_REPOSITORY:latest \
             -f backend/Dockerfile.lambda backend \
-            --push
-
-      - name: Build and push standard container image to GHCR for Azure
-        run: |
-          echo "Building standard container image for Azure Container Apps..."
-          OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
-          docker buildx build \
-            --platform linux/amd64 \
-            --provenance=false \
-            --sbom=false \
-            -t ghcr.io/${OWNER}/spry-backend:latest \
-            -t ghcr.io/${OWNER}/spry-backend:${{ github.sha }} \
-            -f backend/Dockerfile backend \
             --push
 
       - name: Deploy to AWS Lambda & Run Programmatic Database Migrations
@@ -162,7 +176,7 @@ jobs:
           echo "--> Invoking Lambda runner to execute Alembic database migrations..."
           aws lambda invoke \
             --function-name "$FUNCTION_NAME" \
-            --payload '{"task": "migrate"}' \
+            --payload '{"action": "migrate"}' \
             --cli-binary-format raw-in-base64-out \
             --region "$AWS_REGION" \
             migration_response.json
