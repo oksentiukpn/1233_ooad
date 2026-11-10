@@ -6,16 +6,18 @@ from mangum import Mangum
 
 from app.main import app
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
 
-# Mangum translates AWS Lambda Function URL / API Gateway events into ASGI requests
-asgi_handler = Mangum(app, lifespan="off")
+# Primary Mangum handler for API Gateway / Lambda Function URL requests
+handler = Mangum(app, lifespan="off")
 
 
 def run_migrations() -> Dict[str, Any]:
     """Execute database migrations with Alembic inside Lambda environment."""
-    from alembic import command
     from alembic.config import Config
+
+    from alembic import command
     from app.core.config import settings
 
     base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -29,28 +31,24 @@ def run_migrations() -> Dict[str, Any]:
     logger.info(
         f"Running Alembic migrations with config: {ini_path}, scripts: {script_loc}"
     )
-    cfg = Config(ini_path)
-    cfg.set_main_option("script_location", script_loc)
-    if settings.DATABASE_URL:
-        cfg.set_main_option("sqlalchemy.url", settings.DATABASE_URL.replace("%", "%%"))
+
+    alembic_cfg = Config(ini_path)
+    alembic_cfg.set_main_option("script_location", script_loc)
+    alembic_cfg.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
 
     try:
-        command.upgrade(cfg, "head")
-        logger.info("Database migrations completed successfully.")
-        return {"status": "success", "message": "Alembic migrations applied to head"}
-    except Exception as exc:
-        logger.error(f"Failed to apply Alembic migrations: {exc}", exc_info=True)
-        return {"status": "error", "message": str(exc)}
+        command.upgrade(alembic_cfg, "head")
+        logger.info("Alembic migrations completed successfully.")
+        return {"statusCode": 200, "status": "success", "task": "migrate"}
+    except Exception as e:
+        logger.error(f"Migration failed: {e}", exc_info=True)
+        return {"statusCode": 500, "status": "error", "error": str(e)}
 
 
-def handler(event: Dict[str, Any], context: Any) -> Any:
-    """Main AWS Lambda entrypoint.
-
-    Handles either:
-    1. Direct invocation with {'action': 'migrate'} to run database migrations.
-    2. HTTP requests via Mangum ASGI adapter for FastAPI endpoints.
-    """
-    if isinstance(event, dict) and event.get("action") == "migrate":
+def lambda_handler(event: Dict[str, Any], context: Any) -> Any:
+    """Entry point router for AWS Lambda supporting HTTP requests and programmatic tasks."""
+    if event.get("task") == "migrate" or event.get("action") == "migrate":
+        logger.info("Executing programmatic migration task...")
         return run_migrations()
 
-    return asgi_handler(event, context)
+    return handler(event, context)

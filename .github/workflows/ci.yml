@@ -14,6 +14,9 @@ jobs:
   backend-lint-and-test:
     name: Backend Quality Gate (Ruff & Pytest)
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -27,14 +30,14 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r backend/requirements.txt
+          pip install -r requirements.txt
           pip install ruff pytest httpx
 
       - name: Run Ruff Lint
-        run: ruff check backend/
+        run: ruff check .
 
       - name: Run Ruff Format Check
-        run: ruff format --check backend/
+        run: ruff format --check .
 
       - name: Run Pytest
         env:
@@ -43,7 +46,7 @@ jobs:
           SECRET_KEY: "test-secret-key-for-jwt-signing"
           ALGORITHM: "HS256"
           ACCESS_TOKEN_EXPIRE_MINUTES: "30"
-        run: pytest backend/tests
+        run: pytest tests/
 
   frontend-lint-and-typecheck:
     name: Frontend Quality Gate (Lint, Format, Build)
