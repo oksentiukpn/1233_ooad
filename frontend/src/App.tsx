@@ -152,7 +152,8 @@ export function App() {
                 </div>
                 <div className="flex flex-wrap items-center gap-2 text-xs font-medium text-[#ffe358] tracking-wide mt-0.5 font-sans">
                   <span>
-                    Законодавство України &bull; Єдина інформаційна система реєстрації засідань «Spry»
+                    Законодавство України &bull; Єдина інформаційна система реєстрації
+                    засідань «Spry»
                   </span>
                   {isAzure ? (
                     <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-semibold bg-sky-500/25 text-sky-200 border border-sky-400/40">
@@ -217,10 +218,11 @@ export function App() {
             <button
               type="button"
               onClick={() => setActiveTab("registry")}
-              className={`px-3 py-1.5 rounded font-semibold transition-all flex items-center gap-1.5 ${activeTab === "registry"
+              className={`px-3 py-1.5 rounded font-semibold transition-all flex items-center gap-1.5 ${
+                activeTab === "registry"
                   ? "bg-[#ffe358] text-slate-900 shadow-sm"
                   : "text-white hover:bg-white/10"
-                }`}
+              }`}
             >
               <ListFilter className="h-3.5 w-3.5" />
               <span>Реєстр засідань</span>
@@ -229,10 +231,11 @@ export function App() {
             <button
               type="button"
               onClick={() => setActiveTab("create")}
-              className={`px-3 py-1.5 rounded font-semibold transition-all flex items-center gap-1.5 ${activeTab === "create"
+              className={`px-3 py-1.5 rounded font-semibold transition-all flex items-center gap-1.5 ${
+                activeTab === "create"
                   ? "bg-[#ffe358] text-slate-900 shadow-sm"
                   : "text-white hover:bg-white/10"
-                }`}
+              }`}
             >
               <Sparkles className="h-3.5 w-3.5 text-[#ffe358] group-hover:text-white" />
               <span>+ Нове засідання (з ШІ)</span>

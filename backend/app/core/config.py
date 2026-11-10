@@ -15,6 +15,7 @@ class Settings(BaseSettings):
         "https://1233.pp.ua",
         "https://www.1233.pp.ua",
         "https://api.1233.pp.ua",
+        "https://azure.1233.pp.ua",
     ]
 
     # Google OAuth credentials (supports both OAUTH_* and GOOGLE_* names)
@@ -79,10 +80,10 @@ class Settings(BaseSettings):
         raise ValueError(v)
 
     model_config = SettingsConfigDict(
-        env_file=(".env", "../.env"),
+        env_file=".env",
         env_file_encoding="utf-8",
         case_sensitive=True,
-        extra="ignore",
+        extra="allow",
     )
 
 

@@ -25,13 +25,13 @@ variable "db_name" {
 variable "container_image" {
   type        = string
   description = "Container image for Spry backend API (publicly accessible OCI image)"
-  default     = "mcr.microsoft.com/k8se/quickstart:latest"
+  default     = "ghcr.io/oksentiukpn/spry-backend:latest"
 }
 
 variable "target_port" {
   type        = number
   description = "Target port for container ingress (80 for quickstart, 8000 for Spry FastAPI)"
-  default     = 80
+  default     = 8000
 }
 
 variable "cors_origins" {
@@ -43,24 +43,24 @@ variable "cors_origins" {
     "https://azure.1233.pp.ua",
     "https://spry.pages.dev",
     "http://localhost:5173",
-    "http://127.0.0.1:5173"
+    "http://localhost:3000"
   ]
-}
-
-variable "jwt_secret_key" {
-  type        = string
-  description = "Secret key for JWT validation"
-  default     = "spry-super-secret-jwt-key-2026-production"
 }
 
 variable "cognito_user_pool_id" {
   type        = string
-  description = "Amazon Cognito User Pool ID (for hybrid auth)"
+  description = "AWS Cognito User Pool ID for cross-cloud authentication"
   default     = "us-east-1_7FvYNO3Qp"
 }
 
 variable "cognito_client_id" {
   type        = string
-  description = "Amazon Cognito Client ID"
+  description = "AWS Cognito App Client ID for authentication"
   default     = "3f1rgrm4hrmsuhhbmfjjle9t28"
+}
+
+variable "jwt_secret_key" {
+  type        = string
+  description = "Secret key for local JWT validation"
+  default     = "spry-super-secret-jwt-key-2026-production"
 }
